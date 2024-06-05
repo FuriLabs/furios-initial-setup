@@ -28,89 +28,77 @@
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/welcome.svg</property>
-                    <property name="summary" translatable="yes">Welcome</property>
-                    <property name="explanation" translatable="yes">Get to know the features of your @BRAND@ and @VENDOR@.</property>
+                    <property name="summary" translatable="yes">Welcome to your FuriPhone!</property>
+                    <property name="explanation" translatable="yes">Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age.</property>
+                    <property name="widget">
+                      <object class="CcLanguageChooser" id="language_chooser">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
                   </object>
                 </child>
 
                 <child>
-                  <object class="PtHwPage">
+                  <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/kill-switches.svg</property>
-                    <property name="compatibles">purism,librem5</property>
-                    <property name="summary" translatable="yes">Really Disconnect</property>
-                    <property name="explanation" translatable="yes">At any time you can disable Wi-Fi, Bluetooth and telephony by flipping the kill switches on the side of your @BRAND@</property>
+                    <property name="summary" translatable="yes">Let’s go online</property>
+                    <property name="explanation" translatable="yes">Connect your FuriPhone to the Internet now if you want to update your device before you start using it.</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/go-home.svg</property>
-                    <property name="summary" translatable="yes">Going Home</property>
-                    <property name="explanation" translatable="yes">Swiping up on the home bar at the bottom of your screen will bring you to the Overview where you can see your running applications.</property>
+                    <property name="summary" translatable="yes">Keep it safe</property>
+                    <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe. You can do this later in the settings.</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="PtPage">
+                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
+                    <property name="summary" translatable="yes">Sync your data</property>
+                    <property name="explanation" translatable="yes">If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone.</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/show-keyboard.svg</property>
-                    <property name="summary" translatable="yes">Show Keyboard</property>
-                    <property name="explanation" translatable="yes">Long pressing on the home bar will reveal the keyboard at any time.</property>
+                    <property name="summary" translatable="yes">Make it yours</property>
+                    <property name="explanation" translatable="yes">Whether you like them big or small, or dark or light, you’ll be left satisfied.</property>
                   </object>
                 </child>"
 
                 <child>
                   <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
-                    <property name="summary" translatable="yes">Quick Settings</property>
-                    <property name="explanation" translatable="yes">To quickly change things like screen brightness, adjust volume, or toggle settings, swipe down from the top of your device at any time.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/power-menu.svg</property>
-                    <property name="summary" translatable="yes">Power Menu</property>
-                    <property name="explanation" translatable="yes">Pressing and holding the Power button will display a menu with quick actions for your device. When set up, an Emergency calling action will also be available.</property>
+                    <property name="summary" translatable="yes">Leave nothing behind</property>
+                    <property name="explanation" translatable="yes">Your Android™ apps are welcome here, so you can choose freedom without compromises.</property>
+                    <property name="widget">
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">Android and the Android logo are trademarks of Google LLC.</property>
+                        <style>
+                          <class name="legalese"/>
+                        </style>
+                      </object>
+                    </property>
                   </object>
                 </child>
 
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/slide-to-unlock.svg</property>
-                    <property name="summary" translatable="yes">Slide to Unlock</property>
-                    <property name="explanation" translatable="yes">When your device is locked, sliding up will show the keypad where you can unlock your device with your PIN.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/close-apps.svg</property>
-                    <property name="summary" translatable="yes">Closing Applications</property>
-                    <property name="explanation" translatable="yes">In the Overview, you can see a list of your applications, dismiss them with a swipe up or by hitting the close button.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/launch-apps.svg</property>
-                    <property name="summary" translatable="yes">Launching Applications</property>
-                    <property name="explanation" translatable="yes">Tap an application icon in the App Grid to launch it, or use the Search bar to find the application you are looking for.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/see-notifications.svg</property>
-                    <property name="summary" translatable="yes">See Your Notifications</property>
-                    <property name="explanation" translatable="yes">At any time pull down from the top of the device to see notifications from all your apps!</property>
+                    <property name="summary" translatable="yes">We’re all ears</property>
+                    <property name="explanation" translatable="yes">If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care.</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/all-set.svg</property>
-                    <property name="summary" translatable="yes">Welcome to your @BRAND@!</property>
-                    <property name="explanation" translatable="yes">To find out more about @VENDOR@ or your device, check out @URL@.</property>
+                    <property name="summary" translatable="yes">And that’s it!</property>
+                    <property name="explanation" translatable="yes">You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!</property>
                     <property name="widget">
                       <object class="GtkButton">
                         <property name="margin-top">24</property>

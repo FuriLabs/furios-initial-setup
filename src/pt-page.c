@@ -14,6 +14,7 @@
 #include <adwaita.h>
 #include <glib/gi18n.h>
 
+
 enum {
   PROP_0,
   PROP_SUMMARY,

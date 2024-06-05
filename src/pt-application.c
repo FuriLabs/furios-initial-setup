@@ -12,7 +12,10 @@
 #include "pt-application.h"
 #include "pt-window.h"
 
+#include <locale.h>
 #include <glib/gi18n.h>
+
+#include "cc-common-language.h"
 
 #define DESC _("- A graphical tour introducing your device")
 
@@ -47,6 +50,12 @@ pt_application_activate (GApplication *app)
   GtkWindow *window;
 
   g_assert (GTK_IS_APPLICATION (app));
+
+  cc_common_language_set_current_language (setlocale (LC_MESSAGES, NULL));
+  // Reset back to the C locale. We do this so that the UI is loaded with its
+  // original language, so we can stash away the original string and dynamically
+  // translate it later.
+  setlocale (LC_MESSAGES, "C");
 
   window = gtk_application_get_active_window (GTK_APPLICATION (app));
   if (window == NULL)
