@@ -41,189 +41,187 @@ static char *current_language;
 gboolean
 cc_common_language_has_font (const gchar *locale)
 {
-        const FcCharSet *charset;
-        FcPattern       *pattern;
-        FcObjectSet     *object_set;
-        FcFontSet       *font_set;
-        gchar           *language_code;
-        gboolean         is_displayable;
+  const FcCharSet *charset;
+  FcPattern       *pattern;
+  FcObjectSet     *object_set;
+  FcFontSet       *font_set;
+  gchar           *language_code;
+  gboolean         is_displayable;
 
-        is_displayable = FALSE;
-        pattern = NULL;
-        object_set = NULL;
-        font_set = NULL;
+  is_displayable = FALSE;
+  pattern = NULL;
+  object_set = NULL;
+  font_set = NULL;
 
-        if (!gnome_parse_locale (locale, &language_code, NULL, NULL, NULL))
-                return FALSE;
+  if (!gnome_parse_locale (locale, &language_code, NULL, NULL, NULL))
+    return FALSE;
 
-        charset = FcLangGetCharSet ((FcChar8 *) language_code);
-        if (!charset) {
-                /* fontconfig does not know about this language */
-                is_displayable = TRUE;
-        }
-        else {
-                /* see if any fonts support rendering it */
-                pattern = FcPatternBuild (NULL, FC_LANG, FcTypeString, language_code, NULL);
+  charset = FcLangGetCharSet ((FcChar8 *) language_code);
+  if (!charset) {
+    /* fontconfig does not know about this language */
+    is_displayable = TRUE;
+  } else {
+    /* see if any fonts support rendering it */
+    pattern = FcPatternBuild (NULL, FC_LANG, FcTypeString, language_code, NULL);
 
-                if (pattern == NULL)
-                        goto done;
+    if (pattern == NULL)
+      goto done;
 
-                object_set = FcObjectSetCreate ();
+    object_set = FcObjectSetCreate ();
 
-                if (object_set == NULL)
-                        goto done;
+    if (object_set == NULL)
+      goto done;
 
-                font_set = FcFontList (NULL, pattern, object_set);
+    font_set = FcFontList (NULL, pattern, object_set);
 
-                if (font_set == NULL)
-                        goto done;
+    if (font_set == NULL)
+      goto done;
 
-                is_displayable = (font_set->nfont > 0);
-        }
+    is_displayable = (font_set->nfont > 0);
+  }
 
- done:
-        if (font_set != NULL)
-                FcFontSetDestroy (font_set);
+done:
+  if (font_set != NULL)
+    FcFontSetDestroy (font_set);
 
-        if (object_set != NULL)
-                FcObjectSetDestroy (object_set);
+  if (object_set != NULL)
+    FcObjectSetDestroy (object_set);
 
-        if (pattern != NULL)
-                FcPatternDestroy (pattern);
+  if (pattern != NULL)
+    FcPatternDestroy (pattern);
 
-        g_free (language_code);
+  g_free (language_code);
 
-        return is_displayable;
+  return is_displayable;
 }
 
 gchar *
 cc_common_language_get_current_language (void)
 {
-        g_assert (current_language != NULL);
-        return g_strdup (current_language);
+  g_assert (current_language != NULL);
+  return g_strdup (current_language);
 }
 
 void
 cc_common_language_set_current_language (const char *locale)
 {
-        g_clear_pointer (&current_language, g_free);
-        current_language = gnome_normalize_locale (locale);
+  g_clear_pointer (&current_language, g_free);
+  current_language = gnome_normalize_locale (locale);
 }
 
 static gboolean
 user_language_has_translations (const char *locale)
 {
-        g_autofree char *name = NULL, *language_code = NULL, *territory_code = NULL;
-        gboolean ret;
+  g_autofree char *name = NULL, *language_code = NULL, *territory_code = NULL;
+  gboolean ret;
 
-        if (!gnome_parse_locale (locale,
-                                 &language_code,
-                                 &territory_code,
-                                 NULL, NULL))
-                return FALSE;
+  if (!gnome_parse_locale (locale,
+    &language_code,
+    &territory_code,
+    NULL, NULL))
+    return FALSE;
 
-        name = g_strdup_printf ("%s%s%s",
-                                language_code,
-                                territory_code != NULL? "_" : "",
-                                territory_code != NULL? territory_code : "");
-        ret = gnome_language_has_translations (name);
+  name = g_strdup_printf ("%s%s%s",
+                          language_code,
+                          territory_code != NULL ? "_" : "",
+                          territory_code != NULL ? territory_code : "");
+  ret = gnome_language_has_translations (name);
 
-        return ret;
+  return ret;
 }
 
 static char *
 get_lang_for_user_object_path (const char *path)
 {
-	GError *error = NULL;
-	GDBusProxy *user;
-	GVariant *props;
-	char *lang;
+  GError *error = NULL;
+  GDBusProxy *user;
+  GVariant *props;
+  char *lang;
 
-	user = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-					      G_DBUS_PROXY_FLAGS_NONE,
-					      NULL,
-					      "org.freedesktop.Accounts",
-					      path,
-					      "org.freedesktop.Accounts.User",
-					      NULL,
-					      &error);
-	if (user == NULL) {
-		g_warning ("Failed to get proxy for user '%s': %s",
-			   path, error->message);
-		g_error_free (error);
-		return NULL;
-	}
+  user = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+                G_DBUS_PROXY_FLAGS_NONE,
+                NULL,
+                "org.freedesktop.Accounts",
+                path,
+                "org.freedesktop.Accounts.User",
+                NULL,
+                &error);
+  if (user == NULL) {
+    g_warning ("Failed to get proxy for user '%s': %s",
+         path, error->message);
+    g_error_free (error);
+    return NULL;
+  }
 
-	lang = NULL;
-	props = g_dbus_proxy_get_cached_property (user, "Language");
-	if (props != NULL) {
-		lang = g_variant_dup_string (props, NULL);
-		g_variant_unref (props);
-	}
+  lang = NULL;
+  props = g_dbus_proxy_get_cached_property (user, "Language");
+  if (props != NULL) {
+    lang = g_variant_dup_string (props, NULL);
+    g_variant_unref (props);
+  }
 
-	g_object_unref (user);
-	return lang;
+  g_object_unref (user);
+  return lang;
 }
 
 static void
 add_other_users_language (GHashTable *ht)
 {
-        GVariant *variant;
-        GVariantIter *vi;
-        GError *error = NULL;
-        const char *str;
-        GDBusProxy *proxy;
+  GVariant *variant;
+  GVariantIter *vi;
+  GError *error = NULL;
+  const char *str;
+  GDBusProxy *proxy;
 
-        proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-                                               G_DBUS_PROXY_FLAGS_NONE,
-                                               NULL,
-                                               "org.freedesktop.Accounts",
-                                               "/org/freedesktop/Accounts",
-                                               "org.freedesktop.Accounts",
-                                               NULL,
-                                               NULL);
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         "org.freedesktop.Accounts",
+                                         "/org/freedesktop/Accounts",
+                                         "org.freedesktop.Accounts",
+                                         NULL,
+                                         NULL);
 
-        if (proxy == NULL)
-                return;
+  if (proxy == NULL)
+    return;
 
-        variant = g_dbus_proxy_call_sync (proxy,
-                                          "ListCachedUsers",
-                                          NULL,
-                                          G_DBUS_CALL_FLAGS_NONE,
-                                          -1,
-                                          NULL,
-                                          &error);
-        if (variant == NULL) {
-                g_warning ("Failed to list existing users: %s", error->message);
-                g_error_free (error);
-                g_object_unref (proxy);
-                return;
-        }
-        g_variant_get (variant, "(ao)", &vi);
-        while (g_variant_iter_loop (vi, "o", &str)) {
-                char *lang;
-                char *name;
-                char *language;
+  variant = g_dbus_proxy_call_sync (proxy,
+                                    "ListCachedUsers",
+                                    NULL,
+                                    G_DBUS_CALL_FLAGS_NONE,
+                                    -1,
+                                    NULL,
+                                    &error);
+  if (variant == NULL) {
+    g_warning ("Failed to list existing users: %s", error->message);
+    g_error_free (error);
+    g_object_unref (proxy);
+    return;
+  }
+  g_variant_get (variant, "(ao)", &vi);
+  while (g_variant_iter_loop (vi, "o", &str)) {
+    char *lang;
+    char *name;
+    char *language;
 
-                lang = get_lang_for_user_object_path (str);
-                if (lang != NULL && *lang != '\0' &&
-                    cc_common_language_has_font (lang) &&
-                    user_language_has_translations (lang)) {
-                        name = gnome_normalize_locale (lang);
-                        if (!g_hash_table_lookup (ht, name)) {
-                                language = gnome_get_language_from_locale (name, NULL);
-                                g_hash_table_insert (ht, name, language);
-                        }
-                        else {
-                                g_free (name);
-                        }
-                }
-                g_free (lang);
-        }
-        g_variant_iter_free (vi);
-        g_variant_unref (variant);
+    lang = get_lang_for_user_object_path (str);
+    if (lang != NULL && *lang != '\0' &&
+        cc_common_language_has_font (lang) &&
+        user_language_has_translations (lang)) {
+      name = gnome_normalize_locale (lang);
+      if (!g_hash_table_lookup (ht, name)) {
+        language = gnome_get_language_from_locale (name, NULL);
+        g_hash_table_insert (ht, name, language);
+      } else {
+        g_free (name);
+      }
+    }
+    g_free (lang);
+  }
+  g_variant_iter_free (vi);
+  g_variant_unref (variant);
 
-        g_object_unref (proxy);
+  g_object_unref (proxy);
 }
 
 /*
@@ -234,71 +232,56 @@ static void
 insert_language (GHashTable *ht,
                  const char *lang)
 {
-        locale_t locale;
-        char *label_own_lang;
-        char *label_current_lang;
-        char *label_untranslated;
-        char *key;
+  locale_t locale;
+  char *label_own_lang;
+  char *label_current_lang;
+  char *label_untranslated;
+  char *key;
 
-        locale = newlocale (LC_ALL_MASK, lang, (locale_t) 0);
-        if (locale == (locale_t) 0) {
-                g_debug ("%s: Failed to create locale %s", G_STRFUNC, lang);
-                return;
-        }
-        freelocale (locale);
+  locale = newlocale (LC_ALL_MASK, lang, (locale_t) 0);
+  if (locale == (locale_t) 0) {
+    g_debug ("%s: Failed to create locale %s", G_STRFUNC, lang);
+    return;
+  }
+  freelocale (locale);
 
 
-        key = g_strdup (lang);
+  key = g_strdup (lang);
 
-        label_own_lang = gnome_get_language_from_locale (key, key);
-        label_current_lang = gnome_get_language_from_locale (key, current_language);
-        label_untranslated = gnome_get_language_from_locale (key, "C");
+  label_own_lang = gnome_get_language_from_locale (key, key);
+  label_current_lang = gnome_get_language_from_locale (key, current_language);
+  label_untranslated = gnome_get_language_from_locale (key, "C");
 
-        /* We don't have a translation for the label in
-         * its own language? */
-        if (label_own_lang == NULL || g_strcmp0 (label_own_lang, label_untranslated) == 0) {
-                if (g_strcmp0 (label_current_lang, label_untranslated) == 0)
-                        g_hash_table_insert (ht, key, g_strdup (label_untranslated));
-                else
-                        g_hash_table_insert (ht, key, g_strdup (label_current_lang));
-        } else {
-                g_hash_table_insert (ht, key, g_strdup (label_own_lang));
-        }
+  /* We don't have a translation for the label in
+   * its own language? */
+  if (label_own_lang == NULL || g_strcmp0 (label_own_lang, label_untranslated) == 0) {
+    if (g_strcmp0 (label_current_lang, label_untranslated) == 0)
+      g_hash_table_insert (ht, key, g_strdup (label_untranslated));
+    else
+      g_hash_table_insert (ht, key, g_strdup (label_current_lang));
+  } else {
+    g_hash_table_insert (ht, key, g_strdup (label_own_lang));
+  }
 
-        g_free (label_own_lang);
-        g_free (label_current_lang);
-        g_free (label_untranslated);
-}
-
-static void
-insert_user_languages (GHashTable *ht)
-{
-        g_autofree char *name = NULL;
-
-        /* Add the languages used by other users on the system */
-        add_other_users_language (ht);
-
-        /* Add current locale */
-        name = cc_common_language_get_current_language ();
-        if (g_hash_table_lookup (ht, name) == NULL) {
-                insert_language (ht, name);
-        }
+  g_free (label_own_lang);
+  g_free (label_current_lang);
+  g_free (label_untranslated);
 }
 
 GHashTable *
 cc_common_language_get_initial_languages (void)
 {
-        GHashTable *ht;
+  GHashTable *ht;
 
-        ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-        insert_language (ht, "en_US.UTF-8");
-        insert_language (ht, "es_ES.UTF-8");
-        insert_language (ht, "de_DE.UTF-8");
-        insert_language (ht, "fr_FR.UTF-8");
-        insert_language (ht, "zh_CN.UTF-8");
-        insert_language (ht, "ja_JP.UTF-8");
-        insert_language (ht, "ru_RU.UTF-8");
+  insert_language (ht, "en_US.UTF-8");
+  insert_language (ht, "es_ES.UTF-8");
+  insert_language (ht, "de_DE.UTF-8");
+  insert_language (ht, "fr_FR.UTF-8");
+  insert_language (ht, "zh_CN.UTF-8");
+  insert_language (ht, "ja_JP.UTF-8");
+  insert_language (ht, "ru_RU.UTF-8");
 
-        return ht;
+  return ht;
 }
