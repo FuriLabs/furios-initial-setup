@@ -3,10 +3,16 @@
   <gresource prefix="/mobi/phosh/PhoshTour">
     <file preprocess="xml-stripblanks">ui/pt-window.ui</file>
     <file preprocess="xml-stripblanks">ui/pt-page.ui</file>
+    <file preprocess="xml-stripblanks">ui/pt-security-settings.ui</file>
+    <file preprocess="xml-stripblanks">ui/pt-online-accounts.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    <file alias="style.css">ui/style.css</file>
   </gresource>
   <gresource prefix="/org/gnome/control-center">
     <file preprocess="xml-stripblanks" alias="language-chooser.ui">ui/language-chooser.ui</file>
+    <file preprocess="xml-stripblanks" alias="network-list.ui">ui/network-list.ui</file>
+    <file preprocess="xml-stripblanks" alias="online-accounts/cc-online-account-row.ui">ui/cc-online-account-row.ui</file>
+    <file preprocess="xml-stripblanks" alias="online-accounts/cc-online-account-provider-row.ui">ui/cc-online-account-provider-row.ui</file>
   </gresource>
   <gresource prefix="/mobi/phosh/PhoshTour/pages/">
     <file alias="welcome.svg">../data/pages/welcome.svg</file>
@@ -20,5 +26,12 @@
     <file alias="see-notifications.svg">../data/pages/see-notifications.svg</file>
     <file alias="all-set.svg">../data/pages/all-set.svg</file>
     <file alias="show-keyboard.svg">../data/pages/show-keyboard.svg</file>
+    <file alias="dark.svg">../data/pages/dark.svg</file>
+    <file alias="default.svg">../data/pages/default.svg</file>
+    <file alias="connected-weak.svg">../data/pages/connected-weak.svg</file>
+    <file alias="connected-ok.svg">../data/pages/connected-ok.svg</file>
+    <file alias="connected-good.svg">../data/pages/connected-good.svg</file>
+    <file alias="not-connected.svg">../data/pages/not-connected.svg</file>
+    <file alias="padlock.svg">../data/pages/padlock.svg</file>
   </gresource>
 </gresources>

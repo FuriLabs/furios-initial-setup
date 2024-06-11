@@ -15,6 +15,5 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (PtHwPage, pt_hw_page, PT, HW_PAGE, PtPage)
 
 PtHwPage *pt_hw_page_new (void);
-gboolean  pt_hw_page_is_compatible (PtHwPage *self, const char *const *compatibles);
 
 G_END_DECLS

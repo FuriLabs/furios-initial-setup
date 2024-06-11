@@ -446,6 +446,10 @@ walk_all_widgets_recursive (GtkWidget *widget)
       original_text = g_object_get_data (G_OBJECT (widget), "original-text");
     }
 
+    // Don't translate the empty string
+    if (g_strcmp0 (original_text, "") == 0)
+      return;
+
     // TODO: this does not work with string substitutions
     // printf ("Original text: %s\n", original_text);
     // printf ("Translated text: %s\n", _(original_text));

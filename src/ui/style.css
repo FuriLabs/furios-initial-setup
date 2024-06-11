@@ -1,0 +1,49 @@
+.background-preview-button GtkPicture {
+    border-radius: 6px;
+}
+
+.background-preview-button {
+    background: none;
+    border-radius: 9px;
+    padding: 3px;
+    box-shadow: none;
+    outline: none;
+}
+
+.background-preview-button:checked {
+    box-shadow: 0 0 0 3px @accent_color;
+}
+
+.background-preview-button:focus:focus-visible {
+    box-shadow: 0 0 0 3px alpha(@accent_color, .3);
+}
+
+.background-preview-button:checked:focus:focus-visible {
+    box-shadow: 0 0 0 3px @accent_color, 0 0 0 6px alpha(@accent_color, .3);
+}
+
+image.symbolic-circular
+{
+    background-color: alpha(currentColor, 0.08);
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+}
+
+headerbar
+{
+	margin-top: 12px;
+	margin-right: 12px;
+	background: none;
+	border: none;
+}
+
+windowhandle headerbar
+{
+	box-shadow: none;
+}
+
+.legalese
+{
+    opacity: 0.5;
+}

@@ -23,5 +23,7 @@ void             pt_page_set_summary       (PtPage *self, const char *summary);
 void             pt_page_set_explanation   (PtPage *self, const char *explanation);
 void             pt_page_set_image_uri     (PtPage *self, const char *uri);
 void             pt_page_set_widget        (PtPage *self, GtkWidget *widget);
+void             pt_page_set_can_proceed   (PtPage *self, gboolean can_proceed);
+gboolean         pt_page_get_can_proceed   (PtPage *self);
 
 G_END_DECLS

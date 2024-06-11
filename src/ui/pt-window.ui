@@ -20,18 +20,25 @@
           </object>
         </child>
         <child>
-          <object class="GtkOverlay">
+          <object class="GtkOverlay" id="carousel_overlay">
             <child>
               <object class="AdwCarousel" id="main_carousel">
                 <property name="margin-bottom">24</property>
-
+                <!-- I know this disables swipe back even when we just want to disable swipe next, but there's
+                     no way to disable swipe next that I can see and we gotta ship in a couple days, so... -->
+                <binding name="interactive">
+                  <closure type="gboolean" function="get_btn_next_sensitive">
+                    <lookup name="position">main_carousel</lookup>
+                    <lookup name="child">carousel_overlay</lookup>
+                  </closure>
+                </binding>
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/welcome.svg</property>
-                    <property name="summary" translatable="yes">Welcome to your FuriPhone!</property>
+                    <property name="summary" translatable="yes">Hello!</property>
                     <property name="explanation" translatable="yes">Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age.</property>
                     <property name="widget">
-                      <object class="CcLanguageChooser" id="language_chooser">
+                      <object class="CcLanguageChooser">
                         <property name="valign">fill</property>
                       </object>
                     </property>
@@ -40,35 +47,180 @@
 
                 <child>
                   <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/kill-switches.svg</property>
                     <property name="summary" translatable="yes">Let’s go online</property>
                     <property name="explanation" translatable="yes">Connect your FuriPhone to the Internet now if you want to update your device before you start using it.</property>
+                    <property name="widget">
+                      <object class="CcNetworkList" id="network_list">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
+                    <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"></property>
                   </object>
                 </child>
 
                 <child>
                   <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/go-home.svg</property>
+                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
                     <property name="summary" translatable="yes">Keep it safe</property>
-                    <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe. You can do this later in the settings.</property>
+                    <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe.</property>
+                    <property name="widget">
+                      <object class="PtSecuritySettings" id="security_settings">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
+                    <!-- <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>  -->
                   </object>
                 </child>
 
-                <child>
+                <!-- <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
                     <property name="summary" translatable="yes">Sync your data</property>
                     <property name="explanation" translatable="yes">If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone.</property>
+                    <property name="widget">
+                      <object class="PtOnlineAccounts">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
                   </object>
-                </child>
+                </child> -->
 
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/show-keyboard.svg</property>
                     <property name="summary" translatable="yes">Make it yours</property>
-                    <property name="explanation" translatable="yes">Whether you like them big or small, or dark or light, you’ll be left satisfied.</property>
+                    <property name="explanation" translatable="yes">Dark or light mode? Big or small text? Your FuriPhone, your choice.</property>
+                    <property name="widget">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
+                            <property name="valign">fill</property>
+                            <property name="vexpand">true</property>
+                            <property name="hexpand">true</property>
+                            <property name="halign">fill</property>
+                            <child>
+                              <object class="GtkGrid">
+                                <property name="column-homogeneous">True</property>
+                                <property name="column-spacing">24</property>
+                                <property name="row-spacing">12</property>
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <property name="margin-top">18</property>
+                                <property name="margin-bottom">12</property>
+                                <property name="hexpand">True</property>
+                                <child>
+                                  <object class="GtkToggleButton" id="default_toggle">
+                                    <accessibility>
+                                      <relation name="labelled-by">default_label</relation>
+                                    </accessibility>
+                                    <child>
+                                      <object class="GtkPicture" id="default_preview">
+                                        <property name="file">resource:///mobi/phosh/PhoshTour/pages/default.svg</property>
+                                      </object>
+                                    </child>
+                                    <style>
+                                      <class name="background-preview-button"/>
+                                    </style>
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">0</property>
+                                    </layout>
+                                    <property name="active" bind-source="dark_toggle" bind-property="active" bind-flags="sync-create | invert-boolean | bidirectional"></property>
+                                    <signal name="clicked" handler="pt_set_default_mode" />
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="default_label">
+                                    <property name="label" translatable="yes">Light</property>
+                                    <property name="use-underline">True</property>
+                                    <property name="mnemonic-widget">default_toggle</property>
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">1</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkToggleButton" id="dark_toggle">
+                                    <property name="group">default_toggle</property>
+                                    <accessibility>
+                                      <relation name="labelled-by">dark_label</relation>
+                                    </accessibility>
+                                    <child>
+                                      <object class="GtkPicture" id="dark_preview">
+                                        <property name="file">resource:///mobi/phosh/PhoshTour/pages/dark.svg</property>
+                                      </object>
+                                    </child>
+                                    <style>
+                                      <class name="background-preview-button"/>
+                                    </style>
+                                    <layout>
+                                      <property name="column">1</property>
+                                      <property name="row">0</property>
+                                    </layout>
+                                    <binding name="active">
+                                      <lookup name="dark" type="AdwStyleManager">
+                                        <lookup name="style-manager" type="AdwApplication">
+                                          <lookup name="application" type="GtkWindow"></lookup>
+                                        </lookup>
+                                      </lookup>
+                                    </binding>
+                                    <signal name="clicked" handler="pt_set_dark_mode" />
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="dark_label">
+                                    <property name="label" translatable="yes">Dark</property>
+                                    <property name="use-underline">True</property>
+                                    <property name="mnemonic-widget">dark_toggle</property>
+                                    <layout>
+                                      <property name="column">1</property>
+                                      <property name="row">1</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkScale" id="scaling_slider">
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <property name="margin-top">18</property>
+                                <property name="margin-bottom">12</property>
+                                <property name="round-digits">0</property>
+                                <property name="hexpand">True</property>
+                                <property name="halign">fill</property>
+                                <property name="valign">fill</property>
+                                <property name="adjustment">
+                                  <object class="GtkAdjustment">
+                                    <property name="lower">0</property>
+                                    <property name="upper">8</property>
+                                    <property name="step-increment">1</property>
+                                    <property name="page-increment">1</property>
+                                    <property name="value">4</property>
+                                  </object>
+                                </property>
+                                <marks>
+                                  <mark value="0" translatable="yes">Tiny</mark>
+                                  <mark value="1" />
+                                  <mark value="2" />
+                                  <mark value="3" />
+                                  <mark value="4"></mark>
+                                  <mark value="5" />
+                                  <mark value="6" />
+                                  <mark value="7" />
+                                  <mark value="8" translatable="yes">Huge</mark>
+                                </marks>
+                                <signal name="value-changed" handler="pt_set_scaling" />
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
                   </object>
-                </child>"
+                </child>
 
                 <child>
                   <object class="PtPage">
@@ -76,11 +228,44 @@
                     <property name="summary" translatable="yes">Leave nothing behind</property>
                     <property name="explanation" translatable="yes">Your Android™ apps are welcome here, so you can choose freedom without compromises.</property>
                     <property name="widget">
-                      <object class="GtkLabel">
-                        <property name="label" translatable="yes">Android and the Android logo are trademarks of Google LLC.</property>
-                        <style>
-                          <class name="legalese"/>
-                        </style>
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="valign">fill</property>
+                        <property name="vexpand">true</property>
+                        <property name="hexpand">true</property>
+                        <property name="halign">fill</property>
+                        <property name="spacing">12</property>
+                        <child>
+                          <object class="AdwPreferencesGroup">
+                            <property name="vexpand">true</property>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Start automatically</property>
+                                <property name="subtitle" translatable="yes">Start Android when the phone is turned on</property>
+                                <property name="use-underline">true</property>
+                                <child>
+                                  <object class="GtkSwitch" id="waydroid_autostart_switch">
+                                    <property name="valign">center</property>
+                                    <property name="active" bind-source="PtWindow" bind-property="waydroid_autostart" bind-flags="sync-create | bidirectional"></property>
+                                    <accessibility>
+                                      <property name="label" translatable="yes">Enabled</property>
+                                    </accessibility>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">Android and the Android logo are trademarks of Google LLC.</property>
+                            <property name="wrap">True</property>
+                            <property name="justify">center</property>
+                            <style>
+                              <class name="legalese"/>
+                            </style>
+                          </object>
+                        </child>
                       </object>
                     </property>
                   </object>
@@ -118,9 +303,10 @@
 
             <child type="overlay">
               <object class="GtkButton">
-                <property name="valign">center</property>
+                <property name="valign">end</property>
                 <property name="halign">end</property>
                 <property name="margin-end">12</property>
+                <property name="margin-bottom">12</property>
                 <property name="action-name">win.flip-page</property>
                 <property name="action-target">1</property>
                 <property name="child">
@@ -133,6 +319,12 @@
                   <closure type="gboolean" function="get_btn_next_visible">
                     <lookup name="position">main_carousel</lookup>
                     <lookup name="n-pages">main_carousel</lookup>
+                  </closure>
+                </binding>
+                <binding name="sensitive">
+                  <closure type="gboolean" function="get_btn_next_sensitive">
+                    <lookup name="position">main_carousel</lookup>
+                    <lookup name="child">carousel_overlay</lookup>
                   </closure>
                 </binding>
                 <child>
@@ -155,8 +347,9 @@
 
             <child type="overlay">
               <object class="GtkButton">
-                <property name="valign">center</property>
+                <property name="valign">end</property>
                 <property name="halign">start</property>
+                <property name="margin-bottom">12</property>
                 <property name="margin-start">12</property>
                 <property name="action-name">win.flip-page</property>
                 <property name="action-target">-1</property>
@@ -169,6 +362,12 @@
                 <binding name="visible">
                   <closure type="gboolean" function="get_btn_previous_visible">
                     <lookup name="position">main_carousel</lookup>
+                  </closure>
+                </binding>
+                <binding name="sensitive">
+                  <closure type="gboolean" function="get_btn_previous_sensitive">
+                    <lookup name="position">main_carousel</lookup>
+                    <lookup name="child">carousel_overlay</lookup>
                   </closure>
                 </binding>
                 <child>
@@ -194,17 +393,4 @@
       </object>
     </child>
   </template>
-
-  <menu id="primary_menu">
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-        <attribute name="action">win.show-help-overlay</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_About Phosh Tour</attribute>
-        <attribute name="action">app.about</attribute>
-      </item>
-    </section>
-  </menu>
 </interface>

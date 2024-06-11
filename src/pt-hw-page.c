@@ -13,7 +13,7 @@
 #include "pt-hw-page.h"
 
 #define GMOBILE_USE_UNSTABLE_API
-#include <gmobile.h>
+#include <gmobile/gmobile.h>
 
 /**
  * PtHwPage:
@@ -172,22 +172,4 @@ PtHwPage *
 pt_hw_page_new (void)
 {
   return g_object_new (PT_TYPE_HW_PAGE, NULL);
-}
-
-
-gboolean
-pt_hw_page_is_compatible (PtHwPage *self, const char *const *compatibles)
-{
-  g_return_val_if_fail (PT_IS_HW_PAGE (self), FALSE);
-  g_return_val_if_fail (!gm_strv_is_null_or_empty (self->compatibles), FALSE);
-
-  if (gm_strv_is_null_or_empty (compatibles))
-    return FALSE;
-
-  for (int i = 0; compatibles[i]; i++) {
-    if (g_strv_contains ((const char *const *)self->compatibles, compatibles[i]))
-      return TRUE;
-  }
-
-  return FALSE;
 }

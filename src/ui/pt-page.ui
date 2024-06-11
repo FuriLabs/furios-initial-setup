@@ -5,10 +5,9 @@
     <property name="hexpand">true</property>
     <child>
       <object class ="AdwClamp">
-        <property name="maximum-size">400</property>
         <property name="margin-start">24</property>
         <property name="margin-end">24</property>
-        <property name="margin-bottom">24</property>
+        <property name="margin-bottom">48</property>
 	<child>
 	  <object class="GtkBox">
 	    <property name="orientation">vertical</property>
@@ -19,13 +18,12 @@
             <property name="spacing">12</property>
 	    <child>
               <object class ="AdwClamp">
-                <property name="maximum-size">240</property>
+                <property name="maximum-size">200</property>
                 <child>
       	          <object class="GtkPicture" id="image">
                     <property name="halign">center</property>
-                    <property name="can-shrink">false</property>
+                    <property name="can-shrink">true</property>
                     <property name="keep-aspect-ratio">true</property>
-                    <property name="margin-bottom">12</property>
       	          </object>
       	        </child>
               </object>
