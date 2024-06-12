@@ -1,6 +1,7 @@
 #pragma once
 
 #include <adwaita.h>
+#include <pt-page.h>
 
 G_BEGIN_DECLS
 
@@ -13,5 +14,7 @@ struct _PtSecuritySettingsClass
 };
 
 PtSecuritySettings          *pt_security_settings_new               (void);
+
+void pt_security_settings_apply (GObject *self, ApplyCallback cb, gpointer user_data);
 
 G_END_DECLS
