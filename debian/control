@@ -1,7 +1,7 @@
-Source: phosh-tour
+Source: furios-initial-setup
 Section: x11
 Priority: optional
-Maintainer: Guido Günther <agx@sigxcpu.org>
+Maintainer: Furi Labs developers <dev@furilabs.com>
 Build-Depends:
  appstream,
  debhelper-compat (= 13),
@@ -10,15 +10,15 @@ Build-Depends:
  libgtk-4-dev,
  libjson-glib-dev,
  libsensors-dev,
+ libgmobile-dev,
  meson,
 Standards-Version: 4.6.0
-Homepage: https://gitlab.gnome.org/World/Phosh/phosh-tour/
+Homepage: https://github.com/FuriLabs/furios-initial-setup
 Rules-Requires-Root: no
 
-Package: phosh-tour
+Package: furios-initial-setup
 Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
-Description: An introduction to phosh on smartphones
- Phosh tour allows to show a device dependent introduction.
+Description: An initial setup program for FuriOS

@@ -1,4 +1,0 @@
-Test-Command: /usr/bin/phosh-tour --help
-Restrictions: superficial
-Depends:
- @,

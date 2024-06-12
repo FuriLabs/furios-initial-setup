@@ -1,9 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: phosh-tour
-Source: https://gitlab.gnome.org/World/Phosh/phosh-tour
+Upstream-Name: furios-initial-setup
+Source: https://github.com/FuriLabs/furios-initial-setup
 
 Files: *
 Copyright: 2022 Purism SPC
+           2024 Furi Labs
 License: GPL-3+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
