@@ -192,10 +192,24 @@ pt_on_security_settings_applied (PtSecuritySettings *security_settings, gboolean
 static void
 pt_commit_security_settings (PtPage *page, gpointer user_data)
 {
+  pt_security_settings_apply (G_OBJECT (pt_page_get_widget (page)), (ApplyCallback) pt_on_security_settings_applied, page);
+}
+
+{
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
   PtWindow *self = PT_WINDOW (root);
 
-  pt_security_settings_apply (G_OBJECT (pt_page_get_widget (page)), (ApplyCallback) pt_on_security_settings_applied, page);
+static void
+pt_commit_language_settings (PtPage *page, gpointer user_data)
+{
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
+  PtWindow *self = PT_WINDOW (root);
+  GtkWidget *language_chooser = pt_page_get_widget (page);
+
+  cc_language_chooser_apply (CC_LANGUAGE_CHOOSER (language_chooser));
+
+  self->pending_commits--;
+  pt_check_should_exit (self);
 }
 
 static void
@@ -323,6 +337,7 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_set_dark_mode);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_default_mode);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_scaling);
+  gtk_widget_class_bind_template_callback (widget_class, pt_commit_language_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
 
