@@ -1,1 +1,1 @@
-i18n.gettext('phosh-tour', preset: 'glib')
+i18n.gettext('furios-initial-setup', preset: 'glib')
