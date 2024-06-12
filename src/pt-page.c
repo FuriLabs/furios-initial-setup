@@ -27,6 +27,13 @@ enum {
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
+enum {
+  APPLY_CHANGES,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL];
+
 typedef struct _PtPagePrivate {
   char *image_uri;
   GtkPicture *image;
@@ -129,6 +136,15 @@ pt_page_class_init (PtPageClass *klass)
   object_class->finalize = pt_page_finalize;
   object_class->set_property = pt_page_set_property;
   object_class->get_property = pt_page_get_property;
+
+  signals[APPLY_CHANGES] =
+    g_signal_new ("apply-changes",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 
   props[PROP_SUMMARY] =
     g_param_spec_string ("summary", "", "",
@@ -242,6 +258,17 @@ pt_page_set_widget (PtPage *self, GtkWidget *widget)
   adw_bin_set_child (priv->bin_widget, widget);
 
   gtk_widget_set_visible (GTK_WIDGET (priv->bin_widget), !!widget);
+}
+
+GtkWidget *
+pt_page_get_widget (PtPage *self)
+{
+  PtPagePrivate *priv;
+
+  g_return_val_if_fail (PT_IS_PAGE (self), NULL);
+  priv = pt_page_get_instance_private (self);
+
+  return adw_bin_get_child (priv->bin_widget);
 }
 
 gboolean

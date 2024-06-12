@@ -13,6 +13,8 @@ G_BEGIN_DECLS
 #define PT_TYPE_PAGE (pt_page_get_type ())
 G_DECLARE_DERIVABLE_TYPE (PtPage, pt_page, PT, PAGE, AdwBin)
 
+typedef void (*ApplyCallback) (GObject *self, gboolean ok, gpointer user_data);
+
 struct _PtPageClass
 {
   AdwBinClass parent_class;
@@ -23,6 +25,7 @@ void             pt_page_set_summary       (PtPage *self, const char *summary);
 void             pt_page_set_explanation   (PtPage *self, const char *explanation);
 void             pt_page_set_image_uri     (PtPage *self, const char *uri);
 void             pt_page_set_widget        (PtPage *self, GtkWidget *widget);
+GtkWidget       *pt_page_get_widget        (PtPage *self);
 void             pt_page_set_can_proceed   (PtPage *self, gboolean can_proceed);
 gboolean         pt_page_get_can_proceed   (PtPage *self);
 

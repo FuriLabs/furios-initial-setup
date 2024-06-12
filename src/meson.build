@@ -27,6 +27,8 @@ furios_initial_setup_sources = [
   'pt-page.c',
   'pt-hw-page.h',
   'pt-hw-page.c',
+  'run-passwd.h',
+  'run-passwd.c',
 ]
 
 furios_initial_setup_deps = [

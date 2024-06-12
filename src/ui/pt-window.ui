@@ -59,7 +59,7 @@
                 </child>
 
                 <child>
-                  <object class="PtPage">
+                  <object class="PtPage" id="security-page">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
                     <property name="summary" translatable="yes">Keep it safe</property>
                     <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe.</property>
@@ -68,7 +68,8 @@
                         <property name="valign">fill</property>
                       </object>
                     </property>
-                    <!-- <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>  -->
+                    <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>
+                    <signal name="apply-changes" handler="pt_commit_security_settings" object="security-page" />
                   </object>
                 </child>
 
@@ -288,7 +289,7 @@
                       <object class="GtkButton">
                         <property name="margin-top">24</property>
                         <property name="label" translatable="yes">Get Started</property>
-                        <property name="action-name">app.quit</property>
+                        <signal name="clicked" handler="pt_commit_all" object="PtWindow" swapped="yes"/>
                         <style>
                           <class name="pill"/>
                           <class name="suggested-action"/>

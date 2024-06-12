@@ -41,6 +41,8 @@ struct _PtWindow {
   GtkCssProvider *theme_transition_provider;
   guint transition_disable_timeout;
   gboolean waydroid_autostart;
+
+  int pending_commits;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -163,6 +165,62 @@ pt_set_default_mode (GtkToggleButton *btn, gpointer user_data)
   g_object_set (settings, "gtk-theme-name", "adw-gtk3", NULL);
 }
 
+static void
+pt_check_should_exit (PtWindow *self)
+{
+  if (self->pending_commits == 0) {
+    g_debug ("Everything went well. See you never again!\n");
+    gtk_window_close (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))));
+  }
+}
+
+static void
+pt_on_security_settings_applied (PtSecuritySettings *security_settings, gboolean ok, gpointer user_data)
+{
+  PtPage *page = PT_PAGE (user_data);
+  PtWindow *self = PT_WINDOW (gtk_widget_get_root (GTK_WIDGET (page)));
+
+  if (ok) {
+    self->pending_commits--;
+    g_debug ("Security settings applied\n");
+    pt_check_should_exit (self);
+  } else {
+    adw_carousel_scroll_to (self->main_carousel, GTK_WIDGET (page), TRUE);
+  }
+}
+
+static void
+pt_commit_security_settings (PtPage *page, gpointer user_data)
+{
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
+  PtWindow *self = PT_WINDOW (root);
+
+  pt_security_settings_apply (G_OBJECT (pt_page_get_widget (page)), (ApplyCallback) pt_on_security_settings_applied, page);
+}
+
+static void
+pt_commit_all (PtPage *final_page)
+{
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (final_page));
+  PtWindow *self = PT_WINDOW (root);
+
+  self->pending_commits = 0;
+
+  int n_pages = adw_carousel_get_n_pages (self->main_carousel);
+  int i;
+
+  for (i = 0; i < n_pages; i++) {
+    PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
+    if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL)) {
+      self->pending_commits++;
+
+      g_signal_emit_by_name (page, "apply-changes");
+    }
+  }
+
+  pt_check_should_exit (self);
+}
+
 static const char *SCREEN_SCALES[] = {"1", "1.25", "1.5", "1.75", "2", "2.25", "2.5", "2.75", "3"};
 static const int SCREEN_SCALES_COUNT = G_N_ELEMENTS (SCREEN_SCALES);
 
@@ -265,6 +323,8 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_set_dark_mode);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_default_mode);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_scaling);
+  gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
+  gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
 
