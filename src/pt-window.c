@@ -239,22 +239,26 @@ pt_commit_all (PtPage *final_page)
 {
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (final_page));
   PtWindow *self = PT_WINDOW (root);
+  int i;
+  int n_pages = adw_carousel_get_n_pages (self->main_carousel);
 
   self->pending_commits = 0;
 
-  int n_pages = adw_carousel_get_n_pages (self->main_carousel);
-  int i;
-
+  // First we check how many commits we need to do
   for (i = 0; i < n_pages; i++) {
     PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
     if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL)) {
       self->pending_commits++;
-
-      g_signal_emit_by_name (page, "apply-changes");
     }
   }
 
-  pt_check_should_exit (self);
+  // And now we truly commit
+  for (i = 0; i < n_pages; i++) {
+    PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
+    if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL)) {
+      g_signal_emit_by_name (page, "apply-changes");
+    }
+  }
 }
 
 static const char *SCREEN_SCALES[] = {"1", "1.25", "1.5", "1.75", "2", "2.25", "2.5", "2.75", "3"};
