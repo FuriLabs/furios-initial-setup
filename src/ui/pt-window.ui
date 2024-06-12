@@ -33,7 +33,7 @@
                   </closure>
                 </binding>
                 <child>
-                  <object class="PtPage">
+                  <object class="PtPage" id="language-page">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/welcome.svg</property>
                     <property name="summary" translatable="yes">Hello!</property>
                     <property name="explanation" translatable="yes">Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age.</property>
@@ -42,6 +42,7 @@
                         <property name="valign">fill</property>
                       </object>
                     </property>
+                    <signal name="apply-changes" handler="pt_commit_language_settings" object="language-page" />
                   </object>
                 </child>
 

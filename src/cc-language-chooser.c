@@ -37,6 +37,8 @@
 
 #include <glib-object.h>
 
+#include <act/act.h>
+
 struct _CcLanguageChooserClass
 {
   GtkBoxClass parent_class;
@@ -58,6 +60,11 @@ struct _CcLanguageChooserPrivate
 
   gboolean showing_extra;
   gchar *language;
+
+  ActUserManager *user_manager;
+  ActUser *user;
+  GDBusProxy *localed;
+  GCancellable *cancellable;
 };
 
 typedef struct _CcLanguageChooserPrivate CcLanguageChooserPrivate;
@@ -631,10 +638,99 @@ update_lang (gpointer data)
 }
 
 static void
+cc_set_localed_locale (CcLanguageChooser *chooser,
+                       const gchar       *locale_id)
+{
+  g_autoptr(GVariantBuilder) b = NULL;
+  g_autofree gchar *lang_value = NULL;
+  CcLanguageChooserPrivate *priv = cc_language_chooser_get_instance_private (chooser);
+
+  b = g_variant_builder_new (G_VARIANT_TYPE ("as"));
+  lang_value = g_strconcat ("LANG=", locale_id, NULL);
+  g_variant_builder_add (b, "s", lang_value);
+
+  if (locale_id != NULL) {
+    g_autofree gchar *time_value = NULL;
+    g_autofree gchar *numeric_value = NULL;
+    g_autofree gchar *monetary_value = NULL;
+    g_autofree gchar *measurement_value = NULL;
+    g_autofree gchar *paper_value = NULL;
+    time_value = g_strconcat ("LC_TIME=", locale_id, NULL);
+    g_variant_builder_add (b, "s", time_value);
+    numeric_value = g_strconcat ("LC_NUMERIC=", locale_id, NULL);
+    g_variant_builder_add (b, "s", numeric_value);
+    monetary_value = g_strconcat ("LC_MONETARY=", locale_id, NULL);
+    g_variant_builder_add (b, "s", monetary_value);
+    measurement_value = g_strconcat ("LC_MEASUREMENT=", locale_id, NULL);
+    g_variant_builder_add (b, "s", measurement_value);
+    paper_value = g_strconcat ("LC_PAPER=", locale_id, NULL);
+    g_variant_builder_add (b, "s", paper_value);
+  }
+
+  printf ("dbus: Setting locale to %s\n", locale_id);
+  g_dbus_proxy_call (priv->localed,
+                     "SetLocale",
+                     g_variant_new ("(asb)", b, TRUE),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1, NULL, NULL, NULL);
+}
+
+void
+cc_language_chooser_apply (CcLanguageChooser *chooser)
+{
+  CcLanguageChooserPrivate *priv = cc_language_chooser_get_instance_private (chooser);
+
+  if (priv->language == NULL || priv->user == NULL)
+    return;
+
+  printf ("Setting language to %s\n", priv->language);
+  act_user_set_language (priv->user, priv->language);
+  cc_set_localed_locale (chooser, priv->language);
+}
+
+static void
+localed_proxy_ready (GObject      *source,
+                     GAsyncResult *res,
+                     gpointer      data)
+{
+  CcLanguageChooserPrivate *priv = data;
+  GDBusProxy *proxy;
+  g_autoptr(GError) error = NULL;
+
+  proxy = g_dbus_proxy_new_finish (res, &error);
+
+  if (!proxy) {
+    if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+      g_warning ("Failed to contact localed: %s\n", error->message);
+    return;
+  }
+
+  priv->localed = proxy;
+}
+
+static void
 cc_language_chooser_init (CcLanguageChooser *chooser)
 {
+  CcLanguageChooserPrivate *priv = cc_language_chooser_get_instance_private (chooser);
+  g_autoptr(GDBusConnection) bus = NULL;
+  g_autoptr(GError) error = NULL;
+
   gtk_widget_init_template (GTK_WIDGET (chooser));
   g_idle_add (update_lang, NULL);
+
+  priv->user_manager = act_user_manager_get_default ();
+  priv->user = act_user_manager_get_user_by_id (priv->user_manager, getuid ());
+
+  bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+  g_dbus_proxy_new (bus,
+                    G_DBUS_PROXY_FLAGS_GET_INVALIDATED_PROPERTIES,
+                    NULL,
+                    "org.freedesktop.locale1",
+                    "/org/freedesktop/locale1",
+                    "org.freedesktop.locale1",
+                    priv->cancellable,
+                    (GAsyncReadyCallback) localed_proxy_ready,
+                    priv);
 }
 
 const gchar *

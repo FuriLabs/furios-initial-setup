@@ -38,5 +38,6 @@ void          cc_language_chooser_set_language (CcLanguageChooser *chooser,
 gboolean      cc_language_chooser_get_showing_extra (CcLanguageChooser *chooser);
 void          cc_language_chooser_set_showing_extra (CcLanguageChooser *chooser,
                                                      gboolean            showing_extra);
+void          cc_language_chooser_apply (CcLanguageChooser *chooser);
 
 G_END_DECLS
