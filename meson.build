@@ -1,4 +1,4 @@
-project('phosh-tour', 'c',
+project('furios-initial-setup', 'c',
           version: '0.39.0',
     meson_version: '>= 0.58.0',
   default_options: [ 'warning_level=2',
@@ -7,7 +7,7 @@ project('phosh-tour', 'c',
                    ],
 )
 
-application_id = 'mobi.phosh.PhoshTour'
+application_id = 'io.furios.InitialSetup'
 prefix = get_option('prefix')
 libdir = join_paths(prefix, get_option('libdir'))
 plugins_dir = join_paths(prefix, libdir, 'phosh', 'plugins')
@@ -103,7 +103,7 @@ add_project_arguments(
 
 
 config_h = configuration_data()
-config_h.set_quoted('GETTEXT_PACKAGE', 'phosh-tour')
+config_h.set_quoted('GETTEXT_PACKAGE', 'furios-initial-setup')
 config_h.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 config_h.set_quoted('PHOSH_TOUR_APP', meson.project_name())
 config_h.set_quoted('PHOSH_TOUR_BRAND', get_option('brand'))
@@ -113,7 +113,7 @@ config_h.set_quoted('PHOSH_TOUR_VERSION', meson.project_version())
 config_h.set_quoted('PHOSH_TOUR_APP_ID', application_id)
 
 configure_file(
-  output: 'phosh-tour-config.h',
+  output: 'furios-initial-setup-config.h',
   configuration: config_h,
 )
 add_project_arguments([

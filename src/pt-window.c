@@ -9,7 +9,7 @@
 
 #define G_LOG_DOMAIN "pt-window"
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 #include "pt-application.h"
 #include "pt-hw-page.h"
 #include "pt-window.h"

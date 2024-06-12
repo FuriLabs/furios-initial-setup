@@ -20,7 +20,7 @@
  *     Matthias Clasen <mclasen@redhat.com>
  */
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 #include "cc-network-list.h"
 
 #include <glib/gi18n.h>

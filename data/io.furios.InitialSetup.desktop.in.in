@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=@BRAND@ Tour
-Exec=phosh-tour
+Name=@BRAND@ initial setup
+Exec=furios-initial-setup
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)
-Icon=mobi.phosh.PhoshTour
+Icon=io.furios.InitialSetup
 Terminal=false
 Type=Application
 Categories=GNOME;GTK;Utility;

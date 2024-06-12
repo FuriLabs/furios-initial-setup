@@ -8,7 +8,7 @@
 
 #define G_LOG_DOMAIN "pt-hw-page"
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 
 #include "pt-hw-page.h"
 

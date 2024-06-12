@@ -18,7 +18,7 @@
  * Written by: Matthias Clasen <mclasen@redhat.com>
  */
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 
 #include <stdlib.h>
 #include <locale.h>
