@@ -26,6 +26,10 @@
 #include "pt-online-accounts.h"
 #include "pt-security-settings.h"
 
+#include <gsettings-desktop-schemas/gdesktop-enums.h>
+#define INTERFACE_PATH_ID "org.gnome.desktop.interface"
+#define INTERFACE_COLOR_SCHEME_KEY "color-scheme"
+
 enum {
   PROP_0,
   PROP_WAYDROID_AUTOSTART,
@@ -43,6 +47,9 @@ struct _PtWindow {
   gboolean            waydroid_autostart;
 
   int                 pending_commits;
+
+  GSettings           *interface_settings;
+  gboolean            wants_dark_mode;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -149,6 +156,7 @@ pt_set_dark_mode (GtkToggleButton *btn, gpointer user_data)
   PtWindow *self = PT_WINDOW (root);
   GtkSettings *settings = gtk_settings_get_default ();
 
+  self->wants_dark_mode = TRUE;
   pt_enable_transition_style (self);
   g_object_set (settings, "gtk-theme-name", "adw-gtk3-dark", NULL);
 }
@@ -160,6 +168,7 @@ pt_set_default_mode (GtkToggleButton *btn, gpointer user_data)
   PtWindow *self = PT_WINDOW (root);
   GtkSettings *settings = gtk_settings_get_default ();
 
+  self->wants_dark_mode = FALSE;
   pt_enable_transition_style (self);
   g_object_set (settings, "gtk-theme-name", "adw-gtk3", NULL);
 }
@@ -194,9 +203,22 @@ pt_commit_security_settings (PtPage *page, gpointer user_data)
   pt_security_settings_apply (G_OBJECT (pt_page_get_widget (page)), (ApplyCallback) pt_on_security_settings_applied, page);
 }
 
+static void
+pt_commit_theme_settings (PtPage *page, gpointer user_data)
 {
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
   PtWindow *self = PT_WINDOW (root);
+
+  // We apply the color scheme here so that it doesn't interfere with the transition
+  g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
+                      self->wants_dark_mode
+                          ? G_DESKTOP_COLOR_SCHEME_PREFER_DARK
+                          : G_DESKTOP_COLOR_SCHEME_DEFAULT
+                      );
+
+  self->pending_commits--;
+  pt_check_should_exit (self);
+}
 
 static void
 pt_commit_language_settings (PtPage *page, gpointer user_data)
@@ -338,6 +360,7 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_set_scaling);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_language_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
+  gtk_widget_class_bind_template_callback (widget_class, pt_commit_theme_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
@@ -361,6 +384,7 @@ pt_window_init (PtWindow *self)
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
+  self->interface_settings = g_settings_new (INTERFACE_PATH_ID);
   self->waydroid_autostart = g_file_test (g_build_filename (g_get_home_dir (), ".android_enable", NULL),
                                           G_FILE_TEST_EXISTS);
 
