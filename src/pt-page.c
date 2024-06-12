@@ -40,15 +40,6 @@ G_DEFINE_TYPE_WITH_PRIVATE (PtPage, pt_page, ADW_TYPE_BIN)
 
 
 static void
-brand_string (GString *string)
-{
-  g_string_replace (string, "@BRAND@", PHOSH_TOUR_BRAND, 0);
-  g_string_replace (string, "@VENDOR@", PHOSH_TOUR_VENDOR, 0);
-  g_string_replace (string, "@URL@", PHOSH_TOUR_URL, 0);
-}
-
-
-static void
 pt_page_set_property (GObject *object,
                       guint         property_id,
                       const GValue *value,
@@ -202,8 +193,6 @@ pt_page_set_summary (PtPage *self, const char *summary)
   g_return_if_fail (PT_IS_PAGE (self));
   priv = pt_page_get_instance_private (self);
 
-  brand_string (label);
-
   gtk_label_set_label (priv->lbl_summary, label->str);
 }
 
@@ -216,8 +205,6 @@ pt_page_set_explanation (PtPage *self, const char *explanation)
 
   g_return_if_fail (PT_IS_PAGE (self));
   priv = pt_page_get_instance_private (self);
-
-  brand_string (label);
 
   gtk_label_set_label (priv->lbl_explanation, label->str);
 }
