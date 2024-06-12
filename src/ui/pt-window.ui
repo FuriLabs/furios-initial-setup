@@ -88,7 +88,7 @@
                 </child> -->
 
                 <child>
-                  <object class="PtPage">
+                  <object class="PtPage" id="theming-page">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/show-keyboard.svg</property>
                     <property name="summary" translatable="yes">Make it yours</property>
                     <property name="explanation" translatable="yes">Dark or light mode? Big or small text? Your FuriPhone, your choice.</property>
@@ -221,6 +221,7 @@
                         </child>
                       </object>
                     </property>
+                    <signal name="apply-changes" handler="pt_commit_theme_settings" object="theming-page" />
                   </object>
                 </child>
 
