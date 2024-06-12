@@ -41,8 +41,6 @@ _goa_provider_get_provider_title (GoaProvider *provider)
 {
   const char *provider_type = NULL;
 
-  g_assert (GOA_IS_PROVIDER (provider));
-
   /* The order here is the same used to sort accounts and providers in the UI,
    * The title, if present, should bump the provider name to subtitle.
    */
@@ -61,6 +59,8 @@ _goa_provider_get_provider_title (GoaProvider *provider)
     { "kerberos", N_ ("Enterprise Login") },           /* Enterprise Login (Kerberos) */
     { "fedora", NULL },                               /* Fedora */
   };
+
+  g_assert (GOA_IS_PROVIDER (provider));
 
   provider_type = goa_provider_get_provider_type (provider);
   for (size_t i = 0; i < G_N_ELEMENTS (goa_metadata); i++) {

@@ -34,8 +34,6 @@
 
 #include "cc-common-language.h"
 
-static char *get_lang_for_user_object_path (const char *path);
-
 static char *current_language;
 
 gboolean
@@ -107,121 +105,6 @@ cc_common_language_set_current_language (const char *locale)
 {
   g_clear_pointer (&current_language, g_free);
   current_language = gnome_normalize_locale (locale);
-}
-
-static gboolean
-user_language_has_translations (const char *locale)
-{
-  g_autofree char *name = NULL, *language_code = NULL, *territory_code = NULL;
-  gboolean ret;
-
-  if (!gnome_parse_locale (locale,
-    &language_code,
-    &territory_code,
-    NULL, NULL))
-    return FALSE;
-
-  name = g_strdup_printf ("%s%s%s",
-                          language_code,
-                          territory_code != NULL ? "_" : "",
-                          territory_code != NULL ? territory_code : "");
-  ret = gnome_language_has_translations (name);
-
-  return ret;
-}
-
-static char *
-get_lang_for_user_object_path (const char *path)
-{
-  GError *error = NULL;
-  GDBusProxy *user;
-  GVariant *props;
-  char *lang;
-
-  user = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-                G_DBUS_PROXY_FLAGS_NONE,
-                NULL,
-                "org.freedesktop.Accounts",
-                path,
-                "org.freedesktop.Accounts.User",
-                NULL,
-                &error);
-  if (user == NULL) {
-    g_warning ("Failed to get proxy for user '%s': %s",
-         path, error->message);
-    g_error_free (error);
-    return NULL;
-  }
-
-  lang = NULL;
-  props = g_dbus_proxy_get_cached_property (user, "Language");
-  if (props != NULL) {
-    lang = g_variant_dup_string (props, NULL);
-    g_variant_unref (props);
-  }
-
-  g_object_unref (user);
-  return lang;
-}
-
-static void
-add_other_users_language (GHashTable *ht)
-{
-  GVariant *variant;
-  GVariantIter *vi;
-  GError *error = NULL;
-  const char *str;
-  GDBusProxy *proxy;
-
-  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-                                         G_DBUS_PROXY_FLAGS_NONE,
-                                         NULL,
-                                         "org.freedesktop.Accounts",
-                                         "/org/freedesktop/Accounts",
-                                         "org.freedesktop.Accounts",
-                                         NULL,
-                                         NULL);
-
-  if (proxy == NULL)
-    return;
-
-  variant = g_dbus_proxy_call_sync (proxy,
-                                    "ListCachedUsers",
-                                    NULL,
-                                    G_DBUS_CALL_FLAGS_NONE,
-                                    -1,
-                                    NULL,
-                                    &error);
-  if (variant == NULL) {
-    g_warning ("Failed to list existing users: %s", error->message);
-    g_error_free (error);
-    g_object_unref (proxy);
-    return;
-  }
-  g_variant_get (variant, "(ao)", &vi);
-  while (g_variant_iter_loop (vi, "o", &str)) {
-    char *lang;
-    char *name;
-    char *language;
-
-    lang = get_lang_for_user_object_path (str);
-    if (lang != NULL && *lang != '\0' &&
-        cc_common_language_has_font (lang) &&
-        user_language_has_translations (lang)) {
-      name = gnome_normalize_locale (lang);
-      if (!g_hash_table_lookup (ht, name)) {
-        language = gnome_get_language_from_locale (name, NULL);
-        g_hash_table_insert (ht, name, language);
-      } else {
-        g_free (name);
-      }
-    }
-    g_free (lang);
-  }
-  g_variant_iter_free (vi);
-  g_variant_unref (variant);
-
-  g_object_unref (proxy);
 }
 
 /*
