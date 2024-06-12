@@ -50,6 +50,7 @@ struct _PtWindow {
   GSettings *interface_settings;
 
   int pending_commits;
+  double last_position;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -117,6 +118,18 @@ get_btn_next_sensitive (GObject *object, AdwCarousel *carousel, double position)
 static gboolean
 get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double position)
 {
+  // HACK: this method gets called whenever the user starts swiping anywhere
+  // This is DEFINITELY NOT THE RIGHT PLACE TO DO THIS, but we want to ensure
+  // that we unfocus any text entry or any other crap like that. So I'm just gonna
+  // do it here
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (carousel));
+  PtWindow *self = PT_WINDOW (root);
+
+  if (self->last_position != position) {
+    gtk_window_set_focus (GTK_WINDOW (self), NULL);
+    self->last_position = position;
+  }
+
   return TRUE;
 }
 
