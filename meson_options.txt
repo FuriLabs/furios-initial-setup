@@ -1,13 +1,13 @@
 # Use non-breaking space to avoid word wrap in brand or vendor names
 
 option('brand',
-       type: 'string', value: 'Phone',
+       type: 'string', value: 'FuriPhone',
        description: 'The branding to use, e.g. Librem 5')
 
 option('vendor',
-       type: 'string', value: 'Phosh',
+       type: 'string', value: 'FuriOS',
        description: 'The vendor to use, e.g. Phosh, Debian, …')
 
 option('url',
-       type: 'string', value: '<a href="https://phosh.mobi/gettingstarted">Getting started</a>',
+       type: 'string', value: '<a href="https://furilabs.com">Getting started</a>',
        description: 'Website to point to')

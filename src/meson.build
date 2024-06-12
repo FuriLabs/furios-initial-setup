@@ -1,7 +1,7 @@
-phosh_tour_enum_sources = gnome.mkenums_simple('ms-enum-types',
+furios_initial_setup_enum_sources = gnome.mkenums_simple('ms-enum-types',
      sources : files('phosh-config-enums.h'))
 
-phosh_tour_sources = [
+furios_initial_setup_sources = [
   'main.c',
   'cc-util.c',
   'cc-util.h',
@@ -29,7 +29,7 @@ phosh_tour_sources = [
   'pt-hw-page.c',
 ]
 
-phosh_tour_deps = [
+furios_initial_setup_deps = [
   gio_dep,
   glib_dep,
   gmobile_dep,
@@ -45,12 +45,12 @@ phosh_tour_deps = [
 
 gnome = import('gnome')
 
-phosh_tour_sources += gnome.compile_resources('phosh-tour-resources',
-  'phosh-tour.gresource.xml',
-  c_name: 'phosh_tour'
+furios_initial_setup_sources += gnome.compile_resources('furios-initial-setup-resources',
+  'furios-initial-setup.gresource.xml',
+  c_name: 'furios_initial_setup'
 )
 
-executable('phosh-tour', phosh_tour_sources,
-  dependencies: phosh_tour_deps,
+executable('furios-initial-setup', furios_initial_setup_sources,
+  dependencies: furios_initial_setup_deps,
   install: true,
 )

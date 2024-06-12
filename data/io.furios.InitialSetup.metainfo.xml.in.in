@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>io.furios.InitialSetup</id>
+  <name>@BRAND@ Tour</name>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>
+      Initial setup program for FuriOS
+    </p>
+  </description>
+  <summary>@BRAND@ initial setup</summary>
+
+  <content_rating type="oars-1.1"/>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </recommends>
+
+  <launchable type="desktop-id">io.furios.InitialSetup.desktop</launchable>
+
+  <url type="homepage">https://github.com/FuriLabs/furios-initial-setup</url>
+  <url type="bugtracker">https://github.com/FuriLabs/furios-initial-setup/issues</url>
+</component>

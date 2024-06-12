@@ -7,7 +7,7 @@
  * Author: Guido Günther <agx@sigxcpu.org>
  */
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 
 #include "pt-application.h"
 #include "pt-window.h"

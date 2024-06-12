@@ -17,7 +17,7 @@
  *
  */
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 
 #include <string.h>
 

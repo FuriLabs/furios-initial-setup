@@ -3,11 +3,11 @@ desktop_conf.set('BRAND', get_option('brand'))
 
 desktop_file = i18n.merge_file(
   input: configure_file(
-    input: files('mobi.phosh.PhoshTour.desktop.in.in'),
-    output: 'mobi.phosh.Phosh.desktop.in',
+    input: files('io.furios.InitialSetup.desktop.in.in'),
+    output: 'io.furios.InitialSetup.desktop.in',
     configuration: desktop_conf
   ),
-  output: 'mobi.phosh.PhoshTour.desktop',
+  output: 'io.furios.InitialSetup.desktop',
   type: 'desktop',
   po_dir: '../po',
   install: true,
@@ -16,11 +16,11 @@ desktop_file = i18n.merge_file(
 
 appstream_file = i18n.merge_file(
   input: configure_file(
-    input: files('mobi.phosh.PhoshTour.metainfo.xml.in.in'),
-    output: 'mobi.phosh.PhoshTour.metainfo.xml.in',
+    input: files('io.furios.InitialSetup.metainfo.xml.in.in'),
+    output: 'io.furios.InitialSetup.metainfo.xml.in',
     configuration: desktop_conf
   ),
-  output: 'mobi.phosh.PhoshTour.metainfo.xml',
+  output: 'io.furios.InitialSetup.metainfo.xml',
   po_dir: '../po',
   install: true,
   install_dir: join_paths(get_option('datadir'), 'metainfo')
@@ -33,7 +33,7 @@ if appstream_util.found()
   )
 endif
 
-install_data('mobi.phosh.PhoshTour.gschema.xml',
+install_data('io.furios.InitialSetup.gschema.xml',
   install_dir: join_paths(get_option('datadir'), 'glib-2.0/schemas')
 )
 

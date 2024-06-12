@@ -8,7 +8,7 @@
 
 #define G_LOG_DOMAIN "pt-accounts"
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 #include "pt-online-accounts.h"
 #include "pt-page.h"
 #include "cc-online-account-provider-row.h"

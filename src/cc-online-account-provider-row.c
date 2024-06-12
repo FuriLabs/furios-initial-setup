@@ -16,7 +16,7 @@
  * Public License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 #include <glib/gi18n.h>
 
 #define GOA_API_IS_SUBJECT_TO_CHANGE

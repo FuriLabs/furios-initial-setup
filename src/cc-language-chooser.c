@@ -20,7 +20,7 @@
  *     Matthias Clasen <mclasen@redhat.com>
  */
 
-#include "phosh-tour-config.h"
+#include "furios-initial-setup-config.h"
 #include "cc-language-chooser.h"
 
 #include <locale.h>
