@@ -82,10 +82,4 @@ pt_application_class_init (PtApplicationClass *klass)
 static void
 pt_application_init (PtApplication *self)
 {
-  g_autoptr (GtkCssProvider) css_provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (css_provider, "/mobi/phosh/PhoshTour/style.css");
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (),
-                                              GTK_STYLE_PROVIDER (css_provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }

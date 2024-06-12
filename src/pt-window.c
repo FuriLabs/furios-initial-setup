@@ -273,8 +273,13 @@ pt_window_class_init (PtWindowClass *klass)
 static void
 pt_window_init (PtWindow *self)
 {
-  g_auto (GStrv) compatibles = gm_device_tree_get_compatibles (NULL, NULL);
-  int kept = 0, removed = 0;
+  g_autoptr (GtkCssProvider) css_provider = gtk_css_provider_new ();
+
+  gtk_css_provider_load_from_resource (css_provider, "/mobi/phosh/PhoshTour/style.css");
+  gtk_style_context_add_provider_for_display (gdk_display_get_default (),
+                                              GTK_STYLE_PROVIDER (css_provider),
+                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
   self->theme_transition_provider = gtk_css_provider_new ();
 
   gtk_style_context_add_provider_for_display (gdk_display_get_default (),
