@@ -468,7 +468,7 @@ row_activated (GtkListBox        *box,
                CcLanguageChooser *chooser)
 {
   CcLanguageChooserPrivate *priv = cc_language_chooser_get_instance_private (chooser);
-  GtkWidget *child;
+  GtkWidget *child, *row_iter;
   LanguageWidget *widget;
   GList *windows;
 
@@ -487,17 +487,16 @@ row_activated (GtkListBox        *box,
     setlocale (LC_ALL, widget->locale_id);
     g_signal_emit (chooser, signals[CONFIRM], 0);
 
-    GList *windows = gtk_window_list_toplevels ();
+    windows = gtk_window_list_toplevels ();
     for (GList *l = windows; l != NULL; l = l->next) {
-      GtkWidget *window = l->data;
-      walk_all_widgets_recursive (window);
+      walk_all_widgets_recursive (l->data);
     }
 
-    GtkWidget *row_iter = gtk_widget_get_first_child (priv->language_list);
+    row_iter = gtk_widget_get_first_child (priv->language_list);
     while (row_iter) {
       if (GTK_IS_LIST_BOX_ROW (row_iter)) {
-        GtkWidget *child = gtk_list_box_row_get_child (GTK_LIST_BOX_ROW (row_iter));
-        LanguageWidget *widget = get_language_widget (child);
+        child = gtk_list_box_row_get_child (GTK_LIST_BOX_ROW (row_iter));
+        widget = get_language_widget (child);
         if (widget)
           language_widget_update (widget);
       }
@@ -621,11 +620,11 @@ cc_language_chooser_class_init (CcLanguageChooserClass *klass)
 static gboolean
 update_lang (gpointer data)
 {
-  setlocale (LC_ALL, cc_common_language_get_current_language ());
   GList *windows = gtk_window_list_toplevels ();
+
+  setlocale (LC_ALL, cc_common_language_get_current_language ());
   for (GList *l = windows; l != NULL; l = l->next) {
-    GtkWidget *window = l->data;
-    walk_all_widgets_recursive (window);
+    walk_all_widgets_recursive (l->data);
   }
 
   return G_SOURCE_REMOVE;

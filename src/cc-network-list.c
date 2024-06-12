@@ -27,13 +27,6 @@
 #include <gio/gio.h>
 #include <NetworkManager.h>
 
-typedef enum {
-  NM_AP_SEC_UNKNOWN,
-  NM_AP_SEC_NONE,
-  NM_AP_SEC_WEP,
-  NM_AP_SEC_WPA,
-  NM_AP_SEC_WPA2
-} NMAccessPointSecurity;
 
 enum
 {
@@ -126,36 +119,6 @@ out:
   return unique;
 }
 
-static guint
-get_access_point_security (NMAccessPoint *ap)
-{
-  NM80211ApFlags flags;
-  NM80211ApSecurityFlags wpa_flags;
-  NM80211ApSecurityFlags rsn_flags;
-  guint type;
-
-  flags = nm_access_point_get_flags (ap);
-  wpa_flags = nm_access_point_get_wpa_flags (ap);
-  rsn_flags = nm_access_point_get_rsn_flags (ap);
-
-  if (!(flags & NM_802_11_AP_FLAGS_PRIVACY) &&
-      wpa_flags == NM_802_11_AP_SEC_NONE &&
-      rsn_flags == NM_802_11_AP_SEC_NONE)
-    type = NM_AP_SEC_NONE;
-  else if ((flags & NM_802_11_AP_FLAGS_PRIVACY) &&
-           wpa_flags == NM_802_11_AP_SEC_NONE &&
-           rsn_flags == NM_802_11_AP_SEC_NONE)
-    type = NM_AP_SEC_WEP;
-  else if (!(flags & NM_802_11_AP_FLAGS_PRIVACY) &&
-           wpa_flags != NM_802_11_AP_SEC_NONE &&
-           rsn_flags != NM_802_11_AP_SEC_NONE)
-    type = NM_AP_SEC_WPA;
-  else
-    type = NM_AP_SEC_WPA2;
-
-  return type;
-}
-
 static gint
 ap_sort (GtkListBoxRow *a,
          GtkListBoxRow *b,
@@ -184,7 +147,6 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
   gchar *ssid_text;
   const gchar *object_path;
   gboolean activated, activating;
-  guint security;
   guint strength;
   const gchar *icon_name;
   GtkWidget *row;
@@ -208,7 +170,9 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
     case NM_DEVICE_STATE_CONFIG:
     case NM_DEVICE_STATE_NEED_AUTH:
     case NM_DEVICE_STATE_IP_CONFIG:
+    case NM_DEVICE_STATE_IP_CHECK:
     case NM_DEVICE_STATE_SECONDARIES:
+    case NM_DEVICE_STATE_DEACTIVATING:
       activated = FALSE;
       activating = TRUE;
       break;
@@ -216,6 +180,11 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
       activated = TRUE;
       activating = FALSE;
       break;
+    case NM_DEVICE_STATE_UNKNOWN:
+    case NM_DEVICE_STATE_FAILED:
+    case NM_DEVICE_STATE_UNMANAGED:
+    case NM_DEVICE_STATE_UNAVAILABLE:
+    case NM_DEVICE_STATE_DISCONNECTED:
     default:
       activated = FALSE;
       activating = FALSE;
@@ -226,7 +195,6 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
     activating = FALSE;
   }
 
-  security = get_access_point_security (ap);
   strength = nm_access_point_get_strength (ap);
 
   row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
@@ -352,7 +320,7 @@ refresh_wireless_list (CcNetworkList *self)
 
   cancel_periodic_refresh (self);
 
-  nm_device_wifi_request_scan (NM_DEVICE_WIFI (priv->nm_device), NULL, NULL);
+  nm_device_wifi_request_scan_async (NM_DEVICE_WIFI (priv->nm_device), NULL, NULL, NULL);
   active_ap = nm_device_wifi_get_active_access_point (NM_DEVICE_WIFI (priv->nm_device));
 
   while ((child = gtk_widget_get_first_child (priv->network_list)) != NULL)
@@ -485,7 +453,6 @@ row_activated (GtkListBox *box,
                                                NULL,
                                                connection_add_activate_cb, self);
 
-out:
   refresh_wireless_list (self);
 }
 
@@ -599,9 +566,6 @@ cc_network_list_constructed (GObject *object)
 static void
 cc_network_list_finalize (GObject *object)
 {
-  CcNetworkList *chooser = CC_NETWORK_LIST (object);
-  CcNetworkListPrivate *priv = cc_network_list_get_instance_private (chooser);
-
   G_OBJECT_CLASS (cc_network_list_parent_class)->finalize (object);
 }
 
