@@ -121,6 +121,12 @@ pt_application_init (PtApplication *self)
 {
   g_autoptr (GSimpleAction) about_action = NULL;
   g_autoptr (GSimpleAction) quit_action = NULL;
+  g_autoptr (GtkCssProvider) css_provider = gtk_css_provider_new ();
+
+  gtk_css_provider_load_from_resource (css_provider, "/mobi/phosh/PhoshTour/style.css");
+  gtk_style_context_add_provider_for_display (gdk_display_get_default (),
+                                              GTK_STYLE_PROVIDER (css_provider),
+                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
   quit_action = g_simple_action_new ("quit", NULL);
   g_signal_connect_swapped (quit_action, "activate", G_CALLBACK (g_application_quit), self);

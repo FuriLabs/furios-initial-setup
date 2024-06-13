@@ -59,13 +59,18 @@
                   </object>
                 </child>
 
-                <child>
+                <!-- <child>
                   <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/show-keyboard.svg</property>
-                    <property name="summary" translatable="yes">Show Keyboard</property>
-                    <property name="explanation" translatable="yes">Long pressing on the home bar will reveal the keyboard at any time.</property>
+                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
+                    <property name="summary" translatable="yes">Sync your data</property>
+                    <property name="explanation" translatable="yes">If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone.</property>
+                    <property name="widget">
+                      <object class="PtOnlineAccounts">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
                   </object>
-                </child>"
+                </child> -->
 
                 <child>
                   <object class="PtPage">

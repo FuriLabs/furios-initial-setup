@@ -1,0 +1,20 @@
+image.symbolic-circular
+{
+    background-color: alpha(currentColor, 0.08);
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+}
+
+headerbar
+{
+	margin-top: 12px;
+	margin-right: 12px;
+	background: none;
+	border: none;
+}
+
+windowhandle headerbar
+{
+	box-shadow: none;
+}

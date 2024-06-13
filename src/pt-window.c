@@ -21,6 +21,9 @@
 
 #include "cc-language-chooser.h"
 #include "cc-network-list.h"
+#include "cc-online-account-provider-row.h"
+#include "cc-online-account-row.h"
+#include "pt-online-accounts.h"
 
 
 struct _PtWindow {
@@ -88,6 +91,10 @@ pt_window_class_init (PtWindowClass *klass)
 
   g_type_ensure (CC_TYPE_LANGUAGE_CHOOSER);
   g_type_ensure (CC_TYPE_NETWORK_LIST);
+  g_type_ensure (CC_TYPE_ONLINE_ACCOUNT_ROW);
+  g_type_ensure (CC_TYPE_ONLINE_ACCOUNT_PROVIDER_ROW);
+  g_type_ensure (PT_TYPE_SECURITY_SETTINGS);
+  g_type_ensure (PT_TYPE_ONLINE_ACCOUNTS);
   g_type_ensure (PT_TYPE_PAGE);
   g_type_ensure (PT_TYPE_HW_PAGE);
 
