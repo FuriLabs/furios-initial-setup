@@ -247,7 +247,7 @@
 
                     <child>
                       <object class="PtPage">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/power-menu.svg</property>
+                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/android.svg</property>
                         <property name="summary" translatable="yes">Leave nothing behind</property>
                         <property name="explanation" translatable="yes">Your Android™ apps are welcome here, so you can choose freedom without compromises.</property>
                         <property name="widget">
