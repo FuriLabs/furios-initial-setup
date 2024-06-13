@@ -24,6 +24,7 @@
 #include "cc-online-account-provider-row.h"
 #include "cc-online-account-row.h"
 #include "pt-online-accounts.h"
+#include "pt-security-settings.h"
 
 
 struct _PtWindow {

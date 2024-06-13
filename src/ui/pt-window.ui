@@ -60,9 +60,15 @@
 
                 <child>
                   <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/go-home.svg</property>
-                    <property name="summary" translatable="yes">Going Home</property>
-                    <property name="explanation" translatable="yes">Swiping up on the home bar at the bottom of your screen will bring you to the Overview where you can see your running applications.</property>
+                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
+                    <property name="summary" translatable="yes">Keep it safe</property>
+                    <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe.</property>
+                    <property name="widget">
+                      <object class="PtSecuritySettings" id="security_settings">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
+                    <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>
                   </object>
                 </child>
 

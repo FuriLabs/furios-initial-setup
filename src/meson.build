@@ -11,6 +11,8 @@ phosh_tour_sources = [
   'cc-language-chooser.h',
   'cc-network-list.c',
   'cc-network-list.h',
+  'pt-security-settings.c',
+  'pt-security-settings.h',
   'cc-online-account-provider-row.c',
   'cc-online-account-provider-row.h',
   'cc-online-account-row.c',
