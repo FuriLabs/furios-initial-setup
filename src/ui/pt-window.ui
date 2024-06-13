@@ -274,13 +274,13 @@
                   </object>
                 </child>
 
-                <child>
+                <!-- <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/slide-to-unlock.svg</property>
                     <property name="summary" translatable="yes">We’re all ears</property>
                     <property name="explanation" translatable="yes">If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care.</property>
                   </object>
-                </child>
+                </child> -->
 
                 <child>
                   <object class="PtPage">
