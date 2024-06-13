@@ -1,18 +1,17 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: phosh-tour\n"
+"Project-Id-Version: furios-initial-setup\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-02-03 20:19+0100\n"
-"PO-Revision-Date: 2024-02-03 20:31+0100\n"
-"Last-Translator: MoonlightWave-12 <135532-MoonlightWave-12@users.noreply."
-"gitlab.gnome.org>\n"
+"POT-Creation-Date: 2024-06-13 20:33+0100\n"
+"PO-Revision-Date: 2024-06-13 20:33+0100\n"
+"Last-Translator: Jesús Higueras <jesus@dabbleam.com>\n"
 "Language-Team: \n"
-"Language: de\n"
+"Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.2.2\n"
+"X-Generator: GNU nano 6.4\n"
 
 msgid "Next"
 msgstr "Siguiente"
@@ -20,7 +19,6 @@ msgstr "Siguiente"
 msgid "Skip"
 msgstr "Omitir"
 
-#: src/ui/phosh-tour-window.ui:111
 msgid "Hello!"
 msgstr "¡Hola!"
 
@@ -57,8 +55,8 @@ msgstr "Tráete todo contigo"
 msgid "Your Android™ apps are welcome here, so you can choose freedom without compromises."
 msgstr "Tus aplicaciones de Android™ también funcionan aquí, lo que te permite disfrutar de la libertad sin sacrificar nada."
 
-msgid "Android and the Android logo are trademarks of Google LLC."
-msgstr "Android y el logotipo de Android son marcas registradas de Google LLC."
+msgid "Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License."
+msgstr "Android es una marca registrada de Google LLC. El robot de Android es una reproducción o modificación de un trabajo creado y compartido por Google y se utiliza según los términos de la licencia Creative Commons 3.0 Attribution."
 
 msgid "We’re all ears"
 msgstr "Somos todo oídos"
@@ -71,6 +69,30 @@ msgstr "¡Y eso es todo!"
 
 msgid "You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!"
 msgstr "¡Ya está! Tu FuriPhone está listo para convertirse en tu nuevo compañero diario. ¡Disfrútalo!"
+
+msgid "Tiny"
+msgstr "Enano"
+
+msgid "Huge"
+msgstr "Enorme"
+
+msgid "Light"
+msgstr "Claro"
+
+msgid "Dark"
+msgstr "Oscuro"
+
+msgid "Start automatically"
+msgstr "Iniciar automáticamente"
+
+msgid "Start Android when the phone is turned on"
+msgstr "Iniciar Android cuando se encienda el teléfono"
+
+msgid "PIN or password"
+msgstr "PIN o contraseña"
+
+msgid "Confirm PIN or password"
+msgstr "PIN o contraseña, otra vez"
 
 msgid "Get Started"
 msgstr "Empecemos"

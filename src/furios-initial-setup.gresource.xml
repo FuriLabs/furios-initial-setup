@@ -33,5 +33,7 @@
     <file alias="connected-good.svg">../data/pages/connected-good.svg</file>
     <file alias="not-connected.svg">../data/pages/not-connected.svg</file>
     <file alias="padlock.svg">../data/pages/padlock.svg</file>
+    <file alias="android.svg">../data/pages/android.svg</file>
+    <file alias="customize.svg">../data/pages/customize.svg</file>
   </gresource>
 </gresources>
