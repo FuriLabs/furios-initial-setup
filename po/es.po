@@ -1,0 +1,76 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: phosh-tour\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-02-03 20:19+0100\n"
+"PO-Revision-Date: 2024-02-03 20:31+0100\n"
+"Last-Translator: MoonlightWave-12 <135532-MoonlightWave-12@users.noreply."
+"gitlab.gnome.org>\n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.2.2\n"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "Skip"
+msgstr "Omitir"
+
+#: src/ui/phosh-tour-window.ui:111
+msgid "Hello!"
+msgstr "¡Hola!"
+
+msgid "Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age."
+msgstr "La obsolescencia programada es cosa del pasado. Tu nuevo FuriPhone está diseñado para durar y mejorar con el tiempo."
+
+msgid "Let’s go online"
+msgstr "Vamos a conectarnos"
+
+msgid "Connect your FuriPhone to the Internet now if you want to update your device before you start using it."
+msgstr "Conecta tu FuriPhone a Internet ahora si quieres actualizar tu dispositivo antes de empezar a usarlo."
+
+msgid "Keep it safe"
+msgstr "Seguridad ante todo"
+
+msgid "Set up a screen lock to keep your device safe."
+msgstr "Configura un bloqueo de pantalla para mantener tu información a salvo."
+
+msgid "Sync your data"
+msgstr "Sincroniza tus datos"
+
+msgid "If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone."
+msgstr "Si tienes una cuenta compatible, puedes traer tus contactos, calendario y más a tu FuriPhone."
+
+msgid "Make it yours"
+msgstr "Dale tu toque personal"
+
+msgid "Dark or light mode? Big or small text? Your FuriPhone, your choice."
+msgstr "¿Modo oscuro o claro? ¿Texto grande o pequeño? Es tu FuriPhone y mandas tú."
+
+msgid "Leave nothing behind"
+msgstr "Tráete todo contigo"
+
+msgid "Your Android™ apps are welcome here, so you can choose freedom without compromises."
+msgstr "Tus aplicaciones de Android™ también funcionan aquí, lo que te permite disfrutar de la libertad sin sacrificar nada."
+
+msgid "Android and the Android logo are trademarks of Google LLC."
+msgstr "Android y el logotipo de Android son marcas registradas de Google LLC."
+
+msgid "We’re all ears"
+msgstr "Somos todo oídos"
+
+msgid "If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care."
+msgstr "Si tienes algún problema con tu FuriPhone, estamos aquí para ayudarte. No hay tonterías de “soporte de nivel 1”, solo personas reales a las que les importas."
+
+msgid "And that’s it!"
+msgstr "¡Y eso es todo!"
+
+msgid "You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!"
+msgstr "¡Ya está! Tu FuriPhone está listo para convertirse en tu nuevo compañero diario. ¡Disfrútalo!"
+
+msgid "Get Started"
+msgstr "Empecemos"
