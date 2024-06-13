@@ -274,40 +274,16 @@
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/slide-to-unlock.svg</property>
-                    <property name="summary" translatable="yes">Slide to Unlock</property>
-                    <property name="explanation" translatable="yes">When your device is locked, sliding up will show the keypad where you can unlock your device with your PIN.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/close-apps.svg</property>
-                    <property name="summary" translatable="yes">Closing Applications</property>
-                    <property name="explanation" translatable="yes">In the Overview, you can see a list of your applications, dismiss them with a swipe up or by hitting the close button.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/launch-apps.svg</property>
-                    <property name="summary" translatable="yes">Launching Applications</property>
-                    <property name="explanation" translatable="yes">Tap an application icon in the App Grid to launch it, or use the Search bar to find the application you are looking for.</property>
-                  </object>
-                </child>
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/see-notifications.svg</property>
-                    <property name="summary" translatable="yes">See Your Notifications</property>
-                    <property name="explanation" translatable="yes">At any time pull down from the top of the device to see notifications from all your apps!</property>
+                    <property name="summary" translatable="yes">We’re all ears</property>
+                    <property name="explanation" translatable="yes">If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care.</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/all-set.svg</property>
-                    <property name="summary" translatable="yes">Welcome to your @BRAND@!</property>
-                    <property name="explanation" translatable="yes">To find out more about @VENDOR@ or your device, check out @URL@.</property>
+                    <property name="summary" translatable="yes">And that’s it!</property>
+                    <property name="explanation" translatable="yes">You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!</property>
                     <property name="widget">
                       <object class="GtkButton">
                         <property name="margin-top">24</property>
