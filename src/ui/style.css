@@ -47,3 +47,16 @@ windowhandle headerbar
 {
     opacity: 0.5;
 }
+
+.success-underlay
+{
+    background-image: url('resource:///mobi/phosh/PhoshTour/pages/success-backdrop.svg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: bottom;
+}
+
+.all-set
+{
+    color: #333;
+}

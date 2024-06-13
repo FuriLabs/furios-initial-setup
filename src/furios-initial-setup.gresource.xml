@@ -35,5 +35,6 @@
     <file alias="padlock.svg">../data/pages/padlock.svg</file>
     <file alias="android.svg">../data/pages/android.svg</file>
     <file alias="customize.svg">../data/pages/customize.svg</file>
+    <file alias="success-backdrop.svg">../data/pages/success-backdrop.svg</file>
   </gresource>
 </gresources>

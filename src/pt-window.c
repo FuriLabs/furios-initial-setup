@@ -133,6 +133,21 @@ get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double posit
 }
 
 
+static gdouble get_success_backdrop_opacity (GObject *object, GtkBox *box, double position)
+{
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (box));
+  PtWindow *self = PT_WINDOW (root);
+  AdwCarousel *carousel = self->main_carousel;
+  guint page_count = adw_carousel_get_n_pages (carousel);
+  gdouble opacity = 0.0;
+
+  position += 1.0;
+  if (position >= page_count - 1)
+    opacity = (position - (page_count - 1));
+
+  return opacity;
+}
+
 static gboolean
 pt_disable_transition_style (PtWindow *self)
 {
@@ -372,6 +387,7 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_visible);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_next_sensitive);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_sensitive);
+  gtk_widget_class_bind_template_callback (widget_class, get_success_backdrop_opacity);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_dark_mode);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_default_mode);
   gtk_widget_class_bind_template_callback (widget_class, pt_set_scaling);
