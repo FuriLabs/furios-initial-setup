@@ -20,11 +20,18 @@
           </object>
         </child>
         <child>
-          <object class="GtkOverlay">
+          <object class="GtkOverlay" id="carousel_overlay">
             <child>
               <object class="AdwCarousel" id="main_carousel">
                 <property name="margin-bottom">24</property>
-
+                <!-- I know this disables swipe back even when we just want to disable swipe next, but there's
+                     no way to disable swipe next that I can see and we gotta ship in a couple days, so... -->
+                <binding name="interactive">
+                  <closure type="gboolean" function="get_btn_next_sensitive">
+                    <lookup name="position">main_carousel</lookup>
+                    <lookup name="child">carousel_overlay</lookup>
+                  </closure>
+                </binding>
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/welcome.svg</property>
@@ -162,6 +169,12 @@
                     <lookup name="n-pages">main_carousel</lookup>
                   </closure>
                 </binding>
+                <binding name="sensitive">
+                  <closure type="gboolean" function="get_btn_next_sensitive">
+                    <lookup name="position">main_carousel</lookup>
+                    <lookup name="child">carousel_overlay</lookup>
+                  </closure>
+                </binding>
                 <child>
                   <object class='GtkShortcutController'>
                     <property name='scope'>managed</property>
@@ -197,6 +210,12 @@
                 <binding name="visible">
                   <closure type="gboolean" function="get_btn_previous_visible">
                     <lookup name="position">main_carousel</lookup>
+                  </closure>
+                </binding>
+                <binding name="sensitive">
+                  <closure type="gboolean" function="get_btn_previous_sensitive">
+                    <lookup name="position">main_carousel</lookup>
+                    <lookup name="child">carousel_overlay</lookup>
                   </closure>
                 </binding>
                 <child>

@@ -84,6 +84,22 @@ get_btn_previous_visible (GObject *object, double position)
 }
 
 
+static gboolean
+get_btn_next_sensitive (GObject *object, AdwCarousel *carousel, double position)
+{
+  PtPage *page = PT_PAGE (adw_carousel_get_nth_page (carousel, position));
+
+  return pt_page_get_can_proceed (page);
+}
+
+
+static gboolean
+get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double position)
+{
+  return TRUE;
+}
+
+
 static void
 pt_window_class_init (PtWindowClass *klass)
 {
@@ -104,6 +120,8 @@ pt_window_class_init (PtWindowClass *klass)
 
   gtk_widget_class_bind_template_callback (widget_class, get_btn_next_visible);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_visible);
+  gtk_widget_class_bind_template_callback (widget_class, get_btn_next_sensitive);
+  gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_sensitive);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
 }
