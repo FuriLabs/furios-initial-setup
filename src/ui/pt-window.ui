@@ -28,8 +28,13 @@
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/welcome.svg</property>
-                    <property name="summary" translatable="yes">Welcome</property>
-                    <property name="explanation" translatable="yes">Get to know the features of your @BRAND@ and @VENDOR@.</property>
+                    <property name="summary" translatable="yes">Hello!</property>
+                    <property name="explanation" translatable="yes">Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age.</property>
+                    <property name="widget">
+                      <object class="CcLanguageChooser">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
                   </object>
                 </child>
 

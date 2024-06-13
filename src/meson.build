@@ -3,6 +3,12 @@ phosh_tour_enum_sources = gnome.mkenums_simple('ms-enum-types',
 
 phosh_tour_sources = [
   'main.c',
+  'cc-util.c',
+  'cc-util.h',
+  'cc-common-language.c',
+  'cc-common-language.h',
+  'cc-language-chooser.c',
+  'cc-language-chooser.h',
   'pt-application.h',
   'pt-application.c',
   'pt-window.h',
@@ -19,6 +25,9 @@ phosh_tour_deps = [
   gmobile_dep,
   gtk_dep,
   adwaita_dep,
+  dependency ('gnome-desktop-4'),
+  dependency ('fontconfig'),
+  dependency ('accountsservice'),
 ]
 
 gnome = import('gnome')
