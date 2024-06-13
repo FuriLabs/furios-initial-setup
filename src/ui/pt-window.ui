@@ -87,9 +87,138 @@
 
                 <child>
                   <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
-                    <property name="summary" translatable="yes">Quick Settings</property>
-                    <property name="explanation" translatable="yes">To quickly change things like screen brightness, adjust volume, or toggle settings, swipe down from the top of your device at any time.</property>
+                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/show-keyboard.svg</property>
+                    <property name="summary" translatable="yes">Make it yours</property>
+                    <property name="explanation" translatable="yes">Dark or light mode? Big or small text? Your FuriPhone, your choice.</property>
+                    <property name="widget">
+                      <object class="GtkScrolledWindow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
+                            <property name="valign">fill</property>
+                            <property name="vexpand">true</property>
+                            <property name="hexpand">true</property>
+                            <property name="halign">fill</property>
+                            <child>
+                              <object class="GtkGrid">
+                                <property name="column-homogeneous">True</property>
+                                <property name="column-spacing">24</property>
+                                <property name="row-spacing">12</property>
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <property name="margin-top">18</property>
+                                <property name="margin-bottom">12</property>
+                                <property name="hexpand">True</property>
+                                <child>
+                                  <object class="GtkToggleButton" id="default_toggle">
+                                    <accessibility>
+                                      <relation name="labelled-by">default_label</relation>
+                                    </accessibility>
+                                    <child>
+                                      <object class="GtkPicture" id="default_preview">
+                                        <property name="file">resource:///mobi/phosh/PhoshTour/pages/default.svg</property>
+                                      </object>
+                                    </child>
+                                    <style>
+                                      <class name="background-preview-button"/>
+                                    </style>
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">0</property>
+                                    </layout>
+                                    <property name="active" bind-source="dark_toggle" bind-property="active" bind-flags="sync-create | invert-boolean | bidirectional"></property>
+                                    <signal name="clicked" handler="pt_set_default_mode" />
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="default_label">
+                                    <property name="label" translatable="yes">Light</property>
+                                    <property name="use-underline">True</property>
+                                    <property name="mnemonic-widget">default_toggle</property>
+                                    <layout>
+                                      <property name="column">0</property>
+                                      <property name="row">1</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkToggleButton" id="dark_toggle">
+                                    <property name="group">default_toggle</property>
+                                    <accessibility>
+                                      <relation name="labelled-by">dark_label</relation>
+                                    </accessibility>
+                                    <child>
+                                      <object class="GtkPicture" id="dark_preview">
+                                        <property name="file">resource:///mobi/phosh/PhoshTour/pages/dark.svg</property>
+                                      </object>
+                                    </child>
+                                    <style>
+                                      <class name="background-preview-button"/>
+                                    </style>
+                                    <layout>
+                                      <property name="column">1</property>
+                                      <property name="row">0</property>
+                                    </layout>
+                                    <binding name="active">
+                                      <lookup name="dark" type="AdwStyleManager">
+                                        <lookup name="style-manager" type="AdwApplication">
+                                          <lookup name="application" type="GtkWindow"></lookup>
+                                        </lookup>
+                                      </lookup>
+                                    </binding>
+                                    <signal name="clicked" handler="pt_set_dark_mode" />
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="dark_label">
+                                    <property name="label" translatable="yes">Dark</property>
+                                    <property name="use-underline">True</property>
+                                    <property name="mnemonic-widget">dark_toggle</property>
+                                    <layout>
+                                      <property name="column">1</property>
+                                      <property name="row">1</property>
+                                    </layout>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkScale" id="scaling_slider">
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <property name="margin-top">18</property>
+                                <property name="margin-bottom">12</property>
+                                <property name="round-digits">0</property>
+                                <property name="hexpand">True</property>
+                                <property name="halign">fill</property>
+                                <property name="valign">fill</property>
+                                <property name="adjustment">
+                                  <object class="GtkAdjustment">
+                                    <property name="lower">0</property>
+                                    <property name="upper">8</property>
+                                    <property name="step-increment">1</property>
+                                    <property name="page-increment">1</property>
+                                    <property name="value">4</property>
+                                  </object>
+                                </property>
+                                <marks>
+                                  <mark value="0" translatable="yes">Tiny</mark>
+                                  <mark value="1" />
+                                  <mark value="2" />
+                                  <mark value="3" />
+                                  <mark value="4"></mark>
+                                  <mark value="5" />
+                                  <mark value="6" />
+                                  <mark value="7" />
+                                  <mark value="8" translatable="yes">Huge</mark>
+                                </marks>
+                                <signal name="value-changed" handler="pt_set_scaling" />
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
                   </object>
                 </child>
 

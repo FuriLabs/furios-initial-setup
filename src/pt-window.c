@@ -31,6 +31,8 @@ struct _PtWindow {
   AdwApplicationWindow parent_instance;
 
   AdwCarousel         *main_carousel;
+  GtkCssProvider      *theme_transition_provider;
+  guint               transition_disable_timeout;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -101,6 +103,84 @@ get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double posit
 }
 
 
+static gboolean
+pt_disable_transition_style (PtWindow *self)
+{
+  GtkCssProvider *provider = self->theme_transition_provider;
+  gtk_css_provider_load_from_string (provider, "");
+
+  self->transition_disable_timeout = 0;
+
+  return G_SOURCE_REMOVE;
+}
+
+
+static void
+pt_enable_transition_style (PtWindow *self)
+{
+  GtkCssProvider *provider = self->theme_transition_provider;
+  static const char *transition_css =
+    "window {\n \
+      transition: background-color 0.2s ease-in, color 0.2s ease-in;\n \
+    }";
+
+  gtk_css_provider_load_from_string (provider, transition_css);
+
+  if (self->transition_disable_timeout)
+    g_source_remove (self->transition_disable_timeout);
+
+  self->transition_disable_timeout = g_timeout_add (250, (GSourceFunc) pt_disable_transition_style, self);
+}
+
+static void
+pt_set_dark_mode (GtkToggleButton *btn, gpointer user_data)
+{
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (btn));
+  PtWindow *self = PT_WINDOW (root);
+  GtkSettings *settings = gtk_settings_get_default ();
+
+  pt_enable_transition_style (self);
+  g_object_set (settings, "gtk-theme-name", "adw-gtk3-dark", NULL);
+}
+
+static void
+pt_set_default_mode (GtkToggleButton *btn, gpointer user_data)
+{
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (btn));
+  PtWindow *self = PT_WINDOW (root);
+  GtkSettings *settings = gtk_settings_get_default ();
+
+  pt_enable_transition_style (self);
+  g_object_set (settings, "gtk-theme-name", "adw-gtk3", NULL);
+}
+
+static const char *SCREEN_SCALES[] = {"1", "1.25", "1.5", "1.75", "2", "2.25", "2.5", "2.75", "3"};
+static const int SCREEN_SCALES_COUNT = G_N_ELEMENTS (SCREEN_SCALES);
+
+static gboolean
+pt_set_scaling (GtkScale *scale)
+{
+  int value = gtk_range_get_value (GTK_RANGE (scale));
+  const char *command;
+
+  // Don't change the size from under the user
+  if (gtk_widget_get_state_flags (GTK_WIDGET (scale)) & GTK_STATE_FLAG_ACTIVE) {
+    g_timeout_add (100, (GSourceFunc) pt_set_scaling, scale);
+    return G_SOURCE_REMOVE;
+  }
+
+  if (value < 0 || value >= SCREEN_SCALES_COUNT) {
+    g_warning ("Invalid scaling value %d", value);
+    return G_SOURCE_REMOVE;
+  }
+
+  // This is not super nice
+  command = g_strdup_printf ("wlr-randr --output HWCOMPOSER-1 --scale %s", SCREEN_SCALES[value]);
+  g_spawn_command_line_async (command, NULL);
+
+  return G_SOURCE_REMOVE;
+}
+
 static void
 pt_window_class_init (PtWindowClass *klass)
 {
@@ -123,6 +203,9 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_visible);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_next_sensitive);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_sensitive);
+  gtk_widget_class_bind_template_callback (widget_class, pt_set_dark_mode);
+  gtk_widget_class_bind_template_callback (widget_class, pt_set_default_mode);
+  gtk_widget_class_bind_template_callback (widget_class, pt_set_scaling);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
 }
@@ -132,6 +215,11 @@ pt_window_init (PtWindow *self)
 {
   g_auto (GStrv) compatibles = gm_device_tree_get_compatibles (NULL, NULL);
   int kept = 0, removed = 0;
+  self->theme_transition_provider = gtk_css_provider_new ();
+
+  gtk_style_context_add_provider_for_display (gdk_display_get_default (),
+                                              GTK_STYLE_PROVIDER (self->theme_transition_provider),
+                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
   gtk_widget_init_template (GTK_WIDGET (self));
 

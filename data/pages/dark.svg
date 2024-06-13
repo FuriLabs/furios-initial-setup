@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="167"
+   height="125"
+   viewBox="0 0 44.185416 33.072918"
+   version="1.1"
+   id="svg5"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2">
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       id="filter5266"
+       x="-0.10934758"
+       y="-8.6857286"
+       width="1.2186952"
+       height="20.78416">
+      <feFlood
+         flood-opacity="0.294118"
+         flood-color="rgb(0,0,0)"
+         result="flood"
+         id="feFlood5256" />
+      <feComposite
+         in="flood"
+         in2="SourceGraphic"
+         operator="in"
+         result="composite1"
+         id="feComposite5258" />
+      <feGaussianBlur
+         in="composite1"
+         stdDeviation="1.5"
+         result="blur"
+         id="feGaussianBlur5260" />
+      <feOffset
+         dx="0"
+         dy="1"
+         result="offset"
+         id="feOffset5262" />
+      <feComposite
+         in="SourceGraphic"
+         in2="offset"
+         operator="over"
+         result="composite2"
+         id="feComposite5264" />
+    </filter>
+  </defs>
+  <g
+     id="layer1">
+    <g
+       id="g5430"
+       transform="matrix(0.67216606,0,0,0.67216606,12.077461,-24.579746)"
+       style="filter:url(#filter5266)">
+      <rect
+         style="fill:#242424;fill-opacity:1;stroke:none;stroke-width:0.79375;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.2;paint-order:stroke fill markers;stop-color:#000000"
+         id="rect5422"
+         width="32.922501"
+         height="24.707796"
+         x="5.1837173"
+         y="44.023895"
+         rx="2.3238597"
+         ry="2.3238597" />
+      <path
+         id="path5426"
+         style="fill:#161616;fill-opacity:1;stroke:none;stroke-width:0.79375;stroke-linecap:round;stroke-opacity:0.2;paint-order:stroke fill markers;stop-color:#000000"
+         d="m 5.1836629,49.407563 v 0.414473 H 38.106201 v -0.414473 z" />
+    </g>
+    <g
+       id="g5420"
+       transform="matrix(0.67216606,0,0,0.67216606,2.9362944,-18.124005)">
+      <rect
+         style="fill:#242424;fill-opacity:1;stroke:#000000;stroke-width:0.79375;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.05;paint-order:stroke fill markers;filter:url(#filter5266);stop-color:#000000"
+         id="rect858"
+         width="32.922501"
+         height="24.707796"
+         x="5.1837173"
+         y="44.023895"
+         rx="2.3238597"
+         ry="2.3238597" />
+      <g
+         id="g5414">
+        <path
+           id="rect1905"
+           style="fill:#303030;fill-opacity:1;stroke:none;stroke-width:0.79375;stroke-linecap:round;stroke-opacity:0.2;paint-order:stroke fill markers;stop-color:#000000"
+           d="m 7.5075523,44.023668 c -1.287419,0 -2.323889,1.036471 -2.323889,2.323891 v 3.060004 H 38.106201 v -3.060004 c 0,-1.28742 -1.036471,-2.323891 -2.323891,-2.323891 z" />
+        <path
+           id="path4484"
+           style="fill:#1e1e1e;fill-opacity:1;stroke:none;stroke-width:3;stroke-linecap:round;stroke-opacity:0.2;paint-order:stroke fill markers;stop-color:#000000"
+           d="m 19.591797,186.73725 v 1.56651 H 144.02344 v -1.56651 z"
+           transform="scale(0.26458333)" />
+      </g>
+    </g>
+  </g>
+</svg>
