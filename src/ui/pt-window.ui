@@ -330,17 +330,6 @@
                     <lookup name="child">carousel_overlay</lookup>
                   </closure>
                 </binding>
-                <child>
-                  <object class='GtkShortcutController'>
-                    <property name='scope'>managed</property>
-                    <child>
-                      <object class='GtkShortcut'>
-                        <property name='trigger'>&lt;Shift&gt;Right|l</property>
-                        <property name='action'>activate</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
                 <style>
                   <class name="circular"/>
                   <class name="flat"/>
@@ -373,17 +362,6 @@
                     <lookup name="child">carousel_overlay</lookup>
                   </closure>
                 </binding>
-                <child>
-                  <object class='GtkShortcutController'>
-                    <property name='scope'>managed</property>
-                    <child>
-                      <object class='GtkShortcut'>
-                        <property name='trigger'>&lt;Shift&gt;Left|h</property>
-                        <property name='action'>activate</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
                 <style>
                   <class name="circular"/>
                   <class name="flat"/>
