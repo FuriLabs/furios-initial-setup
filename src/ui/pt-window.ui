@@ -89,7 +89,7 @@
 
                 <child>
                   <object class="PtPage" id="theming-page">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/show-keyboard.svg</property>
+                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/customize.svg</property>
                     <property name="summary" translatable="yes">Make it yours</property>
                     <property name="explanation" translatable="yes">Dark or light mode? Big or small text? Your FuriPhone, your choice.</property>
                     <property name="widget">
@@ -261,7 +261,7 @@
                         </child>
                         <child>
                           <object class="GtkLabel">
-                            <property name="label" translatable="yes">Android and the Android logo are trademarks of Google LLC.</property>
+                            <property name="label" translatable="yes">Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</property>
                             <property name="wrap">True</property>
                             <property name="justify">center</property>
                             <style>
