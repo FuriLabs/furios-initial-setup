@@ -42,3 +42,8 @@ windowhandle headerbar
 {
 	box-shadow: none;
 }
+
+.legalese
+{
+    opacity: 0.5;
+}

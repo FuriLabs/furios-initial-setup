@@ -225,8 +225,49 @@
                 <child>
                   <object class="PtPage">
                     <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/power-menu.svg</property>
-                    <property name="summary" translatable="yes">Power Menu</property>
-                    <property name="explanation" translatable="yes">Pressing and holding the Power button will display a menu with quick actions for your device. When set up, an Emergency calling action will also be available.</property>
+                    <property name="summary" translatable="yes">Leave nothing behind</property>
+                    <property name="explanation" translatable="yes">Your Android™ apps are welcome here, so you can choose freedom without compromises.</property>
+                    <property name="widget">
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="valign">fill</property>
+                        <property name="vexpand">true</property>
+                        <property name="hexpand">true</property>
+                        <property name="halign">fill</property>
+                        <property name="spacing">12</property>
+                        <child>
+                          <object class="AdwPreferencesGroup">
+                            <property name="vexpand">true</property>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Start automatically</property>
+                                <property name="subtitle" translatable="yes">Start Android when the phone is turned on</property>
+                                <property name="use-underline">true</property>
+                                <child>
+                                  <object class="GtkSwitch" id="waydroid_autostart_switch">
+                                    <property name="valign">center</property>
+                                    <property name="active" bind-source="PtWindow" bind-property="waydroid_autostart" bind-flags="sync-create | bidirectional"></property>
+                                    <accessibility>
+                                      <property name="label" translatable="yes">Enabled</property>
+                                    </accessibility>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">Android and the Android logo are trademarks of Google LLC.</property>
+                            <property name="wrap">True</property>
+                            <property name="justify">center</property>
+                            <style>
+                              <class name="legalese"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
                   </object>
                 </child>
 

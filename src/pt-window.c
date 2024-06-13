@@ -26,6 +26,13 @@
 #include "pt-online-accounts.h"
 #include "pt-security-settings.h"
 
+enum {
+  PROP_0,
+  PROP_WAYDROID_AUTOSTART,
+  PROP_LAST_PROP
+};
+static GParamSpec *props[PROP_LAST_PROP];
+
 
 struct _PtWindow {
   AdwApplicationWindow parent_instance;
@@ -33,6 +40,7 @@ struct _PtWindow {
   AdwCarousel         *main_carousel;
   GtkCssProvider      *theme_transition_provider;
   guint               transition_disable_timeout;
+  gboolean            waydroid_autostart;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -181,10 +189,49 @@ pt_set_scaling (GtkScale *scale)
   return G_SOURCE_REMOVE;
 }
 
+static void pt_window_set_property (GObject *object,
+                                        guint         property_id,
+                                        const GValue *value,
+                                        GParamSpec *pspec)
+{
+  PtWindow *self = PT_WINDOW (object);
+
+  switch (property_id) {
+  case PROP_WAYDROID_AUTOSTART:
+    self->waydroid_autostart = g_value_get_boolean (value);
+    if (self->waydroid_autostart)
+      g_file_set_contents (g_build_filename (g_get_home_dir (), ".android_enable", NULL), "", 0, NULL);
+    else
+      unlink (g_build_filename (g_get_home_dir (), ".android_enable", NULL));
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
+}
+
+static void pt_window_get_property (GObject *object,
+                                         guint property_id,
+                                         GValue *value,
+                                         GParamSpec *pspec)
+{
+  PtWindow *self = PT_WINDOW (object);
+
+  switch (property_id) {
+  case PROP_WAYDROID_AUTOSTART:
+    g_value_set_boolean (value, self->waydroid_autostart);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
+}
+
 static void
 pt_window_class_init (PtWindowClass *klass)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   g_type_ensure (CC_TYPE_LANGUAGE_CHOOSER);
   g_type_ensure (CC_TYPE_NETWORK_LIST);
@@ -194,6 +241,17 @@ pt_window_class_init (PtWindowClass *klass)
   g_type_ensure (PT_TYPE_ONLINE_ACCOUNTS);
   g_type_ensure (PT_TYPE_PAGE);
   g_type_ensure (PT_TYPE_HW_PAGE);
+
+  props[PROP_WAYDROID_AUTOSTART] =
+    g_param_spec_boolean ("waydroid-autostart",
+                          "Waydroid autostart",
+                          "Whether to autostart Waydroid",
+                          FALSE,
+                          G_PARAM_READWRITE);
+
+  object_class->set_property = pt_window_set_property;
+  object_class->get_property = pt_window_get_property;
+  g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class,
                                                "/mobi/phosh/PhoshTour/ui/pt-window.ui");
@@ -223,23 +281,8 @@ pt_window_init (PtWindow *self)
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  while (kept < adw_carousel_get_n_pages (self->main_carousel)) {
-    GtkWidget *page;
-    gboolean compatible;
+  self->waydroid_autostart = g_file_test (g_build_filename (g_get_home_dir (), ".android_enable", NULL),
+                                          G_FILE_TEST_EXISTS);
 
-    page = adw_carousel_get_nth_page (self->main_carousel, kept);
-
-    compatible = !PT_IS_HW_PAGE (page) ||
-      pt_hw_page_is_compatible (PT_HW_PAGE (page), (const char * const *)compatibles);
-
-    if (!compatible) {
-      adw_carousel_remove (self->main_carousel, page);
-      removed++;
-      continue;
-    }
-
-    kept++;
-  }
-
-  g_debug ("Kept %d page(s), removed %d hw specific page(s)", kept, removed);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_WAYDROID_AUTOSTART]);
 }
