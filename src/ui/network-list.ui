@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<interface>
+  <template class="CcNetworkList" parent="AdwBin">
+    <child>
+      <object class="GtkScrolledWindow">
+        <child>
+          <object class="GtkListBox" id="network_list">
+            <property name="vexpand">True</property>
+            <property name="halign">fill</property>
+            <property name="valign">start</property>
+            <property name="margin-start">2</property>
+            <property name="margin-end">2</property>
+            <property name="margin-top">2</property>
+            <property name="margin-bottom">2</property>
+            <style>
+              <class name="boxed-list" />
+            </style>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

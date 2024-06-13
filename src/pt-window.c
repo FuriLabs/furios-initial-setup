@@ -20,6 +20,7 @@
 #include <glib/gi18n.h>
 
 #include "cc-language-chooser.h"
+#include "cc-network-list.h"
 
 
 struct _PtWindow {
@@ -86,6 +87,7 @@ pt_window_class_init (PtWindowClass *klass)
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
   g_type_ensure (CC_TYPE_LANGUAGE_CHOOSER);
+  g_type_ensure (CC_TYPE_NETWORK_LIST);
   g_type_ensure (PT_TYPE_PAGE);
   g_type_ensure (PT_TYPE_HW_PAGE);
 

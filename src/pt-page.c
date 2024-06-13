@@ -10,6 +10,7 @@
 
 #include "phosh-tour-config.h"
 #include "pt-page.h"
+#include "cc-network-list.h"
 
 #include <adwaita.h>
 #include <glib/gi18n.h>
@@ -61,6 +62,7 @@ pt_page_set_property (GObject      *object,
     break;
   case PROP_IMAGE_URI:
     pt_page_set_image_uri (self, g_value_get_string (value));
+    g_object_notify (object, "image-uri");
     break;
   case PROP_WIDGET:
     pt_page_set_widget (self, g_value_get_object (value));

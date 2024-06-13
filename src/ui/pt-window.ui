@@ -39,11 +39,15 @@
                 </child>
 
                 <child>
-                  <object class="PtHwPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/kill-switches.svg</property>
-                    <property name="compatibles">purism,librem5</property>
-                    <property name="summary" translatable="yes">Really Disconnect</property>
-                    <property name="explanation" translatable="yes">At any time you can disable Wi-Fi, Bluetooth and telephony by flipping the kill switches on the side of your @BRAND@</property>
+                  <object class="PtPage">
+                    <property name="summary" translatable="yes">Let’s go online</property>
+                    <property name="explanation" translatable="yes">Connect your FuriPhone to the Internet now if you want to update your device before you start using it.</property>
+                    <property name="widget">
+                      <object class="CcNetworkList" id="network_list">
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
+                    <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"></property>
                   </object>
                 </child>
 

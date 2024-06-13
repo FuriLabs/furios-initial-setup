@@ -9,6 +9,8 @@ phosh_tour_sources = [
   'cc-common-language.h',
   'cc-language-chooser.c',
   'cc-language-chooser.h',
+  'cc-network-list.c',
+  'cc-network-list.h',
   'pt-application.h',
   'pt-application.c',
   'pt-window.h',
@@ -28,6 +30,8 @@ phosh_tour_deps = [
   dependency ('gnome-desktop-4'),
   dependency ('fontconfig'),
   dependency ('accountsservice'),
+  dependency ('libnm', version: '>= 1.2'),
+  dependency ('libnma-gtk4', version: '>= 1.0'),
 ]
 
 gnome = import('gnome')
