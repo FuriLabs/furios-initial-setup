@@ -328,40 +328,7 @@
                               </object>
                             </child>
                           </object>
-                        </child>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="label" translatable="yes">Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</property>
-                            <property name="wrap">True</property>
-                            <property name="justify">center</property>
-                            <style>
-                              <class name="legalese"/>
-                            </style>
-                          </object>
-                        </child>
-                      </object>
-                    </property>
-                  </object>
-                </child>
-
-                <!-- <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/slide-to-unlock.svg</property>
-                    <property name="summary" translatable="yes">We’re all ears</property>
-                    <property name="explanation" translatable="yes">If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care.</property>
-                  </object>
-                </child> -->
-
-                <child>
-                  <object class="PtPage">
-                    <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/all-set.svg</property>
-                    <property name="summary" translatable="yes">And that’s it!</property>
-                    <property name="explanation" translatable="yes">You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!</property>
-                    <property name="widget">
-                      <object class="GtkButton">
-                        <property name="margin-top">24</property>
-                        <property name="label" translatable="yes">Get Started</property>
-                        <signal name="clicked" handler="pt_commit_all" object="PtWindow" swapped="yes"/>
+                        </property>
                         <style>
                           <class name="all-set"/>
                         </style>
