@@ -67,47 +67,6 @@
                     </child>
 
                     <child>
-                      <object class="PtPage">
-                        <property name="summary" translatable="yes">Let’s go online</property>
-                        <property name="explanation" translatable="yes">Connect your FuriPhone to the Internet now if you want to update your device before you start using it.</property>
-                        <property name="widget">
-                          <object class="CcNetworkList" id="network_list">
-                            <property name="valign">fill</property>
-                          </object>
-                        </property>
-                        <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"></property>
-                      </object>
-                    </child>
-
-                    <child>
-                      <object class="PtPage" id="security-page">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
-                        <property name="summary" translatable="yes">Keep it safe</property>
-                        <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe.</property>
-                        <property name="widget">
-                          <object class="PtSecuritySettings" id="security_settings">
-                            <property name="valign">fill</property>
-                          </object>
-                        </property>
-                        <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>
-                        <signal name="apply-changes" handler="pt_commit_security_settings" object="security-page" />
-                      </object>
-                    </child>
-
-                    <!-- <child>
-                      <object class="PtPage">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
-                        <property name="summary" translatable="yes">Sync your data</property>
-                        <property name="explanation" translatable="yes">If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone.</property>
-                        <property name="widget">
-                          <object class="PtOnlineAccounts">
-                            <property name="valign">fill</property>
-                          </object>
-                        </property>
-                      </object>
-                    </child> -->
-
-                    <child>
                       <object class="PtPage" id="theming-page">
                         <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/customize.svg</property>
                         <property name="summary" translatable="yes">Make it yours</property>
@@ -244,6 +203,47 @@
                         <signal name="apply-changes" handler="pt_commit_theme_settings" object="theming-page" />
                       </object>
                     </child>
+
+                    <child>
+                      <object class="PtPage">
+                        <property name="summary" translatable="yes">Let’s go online</property>
+                        <property name="explanation" translatable="yes">Connect your FuriPhone to the Internet now if you want to update your device before you start using it.</property>
+                        <property name="widget">
+                          <object class="CcNetworkList" id="network_list">
+                            <property name="valign">fill</property>
+                          </object>
+                        </property>
+                        <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"></property>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="PtPage" id="security-page">
+                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
+                        <property name="summary" translatable="yes">Keep it safe</property>
+                        <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe.</property>
+                        <property name="widget">
+                          <object class="PtSecuritySettings" id="security_settings">
+                            <property name="valign">fill</property>
+                          </object>
+                        </property>
+                        <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>
+                        <signal name="apply-changes" handler="pt_commit_security_settings" object="security-page" />
+                      </object>
+                    </child>
+
+                    <!-- <child>
+                      <object class="PtPage">
+                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
+                        <property name="summary" translatable="yes">Sync your data</property>
+                        <property name="explanation" translatable="yes">If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone.</property>
+                        <property name="widget">
+                          <object class="PtOnlineAccounts">
+                            <property name="valign">fill</property>
+                          </object>
+                        </property>
+                      </object>
+                    </child> -->
 
                     <child>
                       <object class="PtPage">
