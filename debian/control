@@ -11,6 +11,12 @@ Build-Depends:
  libjson-glib-dev,
  libsensors-dev,
  libgmobile-dev,
+ libgnome-desktop-4-dev,
+ libaccountsservice-dev (>= 0.6.39),
+ libnm-dev (>= 1.24.0) [linux-any],
+ libgoa-1.0-dev (>= 3.45),
+ libgoa-backend-1.0-dev (>= 3.45),
+ libnma-gtk4-dev (>= 1.10.2) [linux-any],
  meson,
 Standards-Version: 4.6.0
 Homepage: https://github.com/FuriLabs/furios-initial-setup
@@ -19,6 +25,7 @@ Rules-Requires-Root: no
 Package: furios-initial-setup
 Architecture: any
 Depends:
+ accountsservice,
  ${misc:Depends},
  ${shlibs:Depends},
 Description: An initial setup program for FuriOS
