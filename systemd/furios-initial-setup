@@ -1,0 +1,41 @@
+#!/bin/sh
+
+[ -f "${HOME}/.config/furios-initial-setup-done" ] && exit 0
+
+COMPOSITOR="/usr/bin/phoc"
+PHOC_INI="/usr/share/phosh/phoc.ini"
+GNOME_SESSION=${GNOME_SESSION:-gnome-session}
+
+if [ -x /usr/bin/phoc ]; then
+  COMPOSITOR=/usr/bin/phoc
+fi
+
+ROOTSTON_INI=/etc/phosh/rootston.ini
+if [ -f /etc/phosh/phoc.ini ]; then
+  PHOC_INI=/etc/phosh/phoc.ini
+elif  [ -f "${ROOTSTON_INI}" ]; then
+  echo "WARN: Deprecated ${ROOTSTON_INI} detected - please rename to phoc.ini"
+  PHOC_INI="${ROOTSTON_INI}"
+fi
+
+if [ -f "$HOME/.phoshdebug" ]; then
+  echo "WARN: .phoshdebug found."
+  . "$HOME/.phoshdebug"
+fi
+
+SESSION_MANAGER=
+# old gnome-session: Pass --builtin or --systemd
+if gnome-session --help | grep -qs '\-\-builtin'; then
+  SESSION_MANAGER=--systemd
+# gnome-session >= 46 doesn't support builtin
+elif [ "--systemd" = "--builtin" ]; then
+  echo "ERR: gnome-session only supports systemd, session cannot start" 1>&2
+  exit 1
+fi
+
+# Run gnome-session through a login shell so it picks
+# variables from /etc/profile.d (XDG_*)
+[ -n "$WLR_BACKENDS" ] || WLR_BACKENDS=drm,libinput
+export WLR_BACKENDS
+export PHOSH_KIOSK_MODE_APPS=furios-initial-setup
+exec "${COMPOSITOR}" -S -C "${PHOC_INI}" -E "bash -lc 'exec ${GNOME_SESSION} --disable-acceleration-check --session=phosh ${SESSION_MANAGER} & furios-initial-setup'"

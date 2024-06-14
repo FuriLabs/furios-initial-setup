@@ -124,6 +124,9 @@ subdir('data')
 subdir('src')
 subdir('po')
 
+install_data('systemd/furios-initial-setup', install_dir: '/usr/libexec/')
+install_data('systemd/60-initial-setup.conf', install_dir: '/usr/lib/systemd/system/phosh.service.d/')
+
 summary({
      'Brand': get_option('brand'),
      'Vendor': get_option('vendor'),
