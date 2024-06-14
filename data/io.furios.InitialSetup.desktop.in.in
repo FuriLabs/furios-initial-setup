@@ -11,3 +11,4 @@ StartupNotify=true
 Keywords=Mobile;Tour;@BRAND@;
 OnlyShowIn=Phosh;
 X-Purism-FormFactor=Workstation;Mobile;
+NoDisplay=true
