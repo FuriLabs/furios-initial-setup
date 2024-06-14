@@ -206,6 +206,19 @@ pt_check_should_exit (PtWindow *self)
 {
   if (self->pending_commits == 0) {
     g_debug ("Everything went well. See you never again!\n");
+
+    const gchar *home_dir = g_get_home_dir ();
+
+    gchar *file_path = g_build_filename (home_dir, ".config/furios-initial-setup-done", NULL);
+
+    FILE *file = fopen (file_path, "w");
+    if (file)
+      fclose (file);
+    else
+      g_warning ("Failed to create file at %s", file_path);
+
+    g_free (file_path);
+
     gtk_window_close (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))));
   }
 }
