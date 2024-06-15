@@ -208,14 +208,9 @@ pt_check_should_exit (PtWindow *self)
     g_debug ("Everything went well. See you never again!\n");
 
     const gchar *home_dir = g_get_home_dir ();
+    gchar *file_path = g_build_filename (home_dir, ".config/furios-initial-setup-pending", NULL);
 
-    gchar *file_path = g_build_filename (home_dir, ".config/furios-initial-setup-done", NULL);
-
-    FILE *file = fopen (file_path, "w");
-    if (file)
-      fclose (file);
-    else
-      g_warning ("Failed to create file at %s", file_path);
+    unlink (file_path);
 
     g_free (file_path);
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-[ -f "${HOME}/.config/furios-initial-setup-done" ] && exit 0
+[ -f "${HOME}/.config/furios-initial-setup-pending" ] || exit 0
 
 COMPOSITOR="/usr/bin/phoc"
 PHOC_INI="/usr/share/phosh/phoc.ini"
@@ -37,5 +37,4 @@ fi
 # variables from /etc/profile.d (XDG_*)
 [ -n "$WLR_BACKENDS" ] || WLR_BACKENDS=drm,libinput
 export WLR_BACKENDS
-export PHOSH_KIOSK_MODE_APPS=furios-initial-setup
 exec "${COMPOSITOR}" -S -C "${PHOC_INI}" -E "bash -lc 'exec ${GNOME_SESSION} --disable-acceleration-check --session=phosh ${SESSION_MANAGER} & furios-initial-setup'"
