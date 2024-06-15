@@ -210,8 +210,9 @@ pt_check_should_exit (PtWindow *self)
     const gchar *home_dir = g_get_home_dir ();
     gchar *file_path = g_build_filename (home_dir, ".config/furios-initial-setup-pending", NULL);
 
-    unlink (file_path);
+    g_debug ("Removing %s\n", file_path);
 
+    unlink (file_path);
     g_free (file_path);
 
     gtk_window_close (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))));
