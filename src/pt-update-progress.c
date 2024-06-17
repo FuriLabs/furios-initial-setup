@@ -26,11 +26,6 @@ typedef struct _PtUpdateProgressPrivate
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
 
 
-/*
-  g_object_set (self, "ready", can_proceed, NULL);
-  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
-} */
-
 static void
 pt_update_progress_set_property (GObject *object,
                                   guint property_id,
@@ -84,7 +79,7 @@ pt_update_progress_class_init (PtUpdateProgressClass *klass)
     g_param_spec_boolean ("ready",
                          "Ready",
                          "Whether we're good to go",
-                         FALSE,
+                         TRUE,
                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
@@ -102,7 +97,7 @@ pt_update_progress_init (PtUpdateProgress *self)
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  priv->ready = FALSE;
+  priv->ready = TRUE;
   priv->client = pk_client_new ();
 }
 
@@ -167,7 +162,7 @@ pt_update_progress_finish (PtUpdateProgress *self)
   priv->progress_value = 1.0;
   gtk_progress_bar_set_fraction (priv->progress, 1.0);
   gtk_label_set_label (priv->label, _("Good to go!"));
-  g_object_set (self, "ready", TRUE, NULL);
+  priv->ready = TRUE;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 }
 
@@ -244,6 +239,9 @@ pt_update_progress_begin (PtUpdateProgress *self)
   // WTF: GTK progress bars need to be manually pumped for the pulse to move
   // ????????????????? what
   g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
+
+  priv->ready = FALSE;
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 
   gtk_label_set_label (priv->label, _("Checking for updates…"));
 

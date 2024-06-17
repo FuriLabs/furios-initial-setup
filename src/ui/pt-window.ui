@@ -226,6 +226,7 @@
                             <signal name="activated" handler="pt_update_begin" object="update_progress" />
                           </object>
                         </property>
+                        <property name="can-proceed" bind-source="update_progress" bind-property="ready" bind-flags="sync-create"></property>
                       </object>
                     </child>
 
