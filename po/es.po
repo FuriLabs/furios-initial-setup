@@ -96,3 +96,24 @@ msgstr "PIN o contraseña, otra vez"
 
 msgid "Get Started"
 msgstr "Empecemos"
+
+msgid "Checking for updates"
+msgstr "Buscando actualizaciones"
+
+msgid "Let’s make sure your FuriPhone is the best version of itself. This might take a couple of minutes."
+msgstr "Vamos a asegurarnos de que tu FuriPhone sea su mejor versión. Esto puede tardar un par de minutos."
+
+msgid "Checking for updates…"
+msgstr "Buscando actualizaciones…"
+
+msgid "Downloading updates…"
+msgstr "Descargando actualizaciones…"
+
+msgid "Installing updates…"
+msgstr "Instalando actualizaciones…"
+
+msgid "Good to go!"
+msgstr "¡Listo!"
+
+msgid "Update failed"
+msgstr "Error al actualizar"
