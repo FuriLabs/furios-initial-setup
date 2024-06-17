@@ -34,8 +34,8 @@ msgstr "Conecta tu FuriPhone a Internet ahora si quieres actualizar tu dispositi
 msgid "Keep it safe"
 msgstr "Seguridad ante todo"
 
-msgid "Set up a screen lock to keep your device safe."
-msgstr "Configura un bloqueo de pantalla para mantener tu información a salvo."
+msgid "Set up a screen lock to keep your device safe. Your PIN or passcode must be at least 6 characters long."
+msgstr "Configura un bloqueo de pantalla para mantener tu información a salvo. Tu PIN o contraseña debe tener al menos 6 caracteres."
 
 msgid "Sync your data"
 msgstr "Sincroniza tus datos"

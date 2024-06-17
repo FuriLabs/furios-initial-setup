@@ -235,7 +235,7 @@
                       <object class="PtPage" id="security-page">
                         <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
                         <property name="summary" translatable="yes">Keep it safe</property>
-                        <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe.</property>
+                        <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe. Your PIN or passcode must be at least 6 characters long.</property>
                         <property name="widget">
                           <object class="PtSecuritySettings" id="security_settings">
                             <property name="valign">fill</property>
