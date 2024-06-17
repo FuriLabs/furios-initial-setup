@@ -21,6 +21,7 @@ enum {
   PROP_EXPLANATION,
   PROP_IMAGE_URI,
   PROP_WIDGET,
+  PROP_SUBPAGE,
   PROP_CAN_PROCEED,
   PROP_LAST_PROP
 };
@@ -28,6 +29,7 @@ static GParamSpec *props[PROP_LAST_PROP];
 
 enum {
   APPLY_CHANGES,
+  ACTIVATED,
   LAST_SIGNAL
 };
 
@@ -39,6 +41,7 @@ typedef struct _PtPagePrivate {
   GtkLabel   *lbl_summary;
   GtkLabel   *lbl_explanation;
   AdwBin     *bin_widget;
+  GtkStack   *subpage_stack;
   gboolean   can_proceed;
 } PtPagePrivate;
 
@@ -69,6 +72,9 @@ pt_page_set_property (GObject      *object,
   case PROP_WIDGET:
     pt_page_set_widget (self, g_value_get_object (value));
     break;
+  case PROP_SUBPAGE:
+    pt_page_set_subpage (self, PT_PAGE (g_value_get_object (value)));
+    break;
   case PROP_CAN_PROCEED:
     priv->can_proceed = g_value_get_boolean (value);
     g_object_notify_by_pspec (object, pspec);
@@ -80,6 +86,37 @@ pt_page_set_property (GObject      *object,
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
   }
+}
+
+
+void
+pt_page_set_subpage (PtPage *self, PtPage *subpage)
+{
+  PtPagePrivate *priv;
+
+  g_return_if_fail (PT_IS_PAGE (self));
+  g_return_if_fail (subpage == NULL || PT_IS_PAGE (subpage));
+
+  priv = pt_page_get_instance_private (self);
+
+  if (subpage)
+    gtk_stack_add_named (priv->subpage_stack, GTK_WIDGET (subpage), "subpage");
+  else if (gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"))
+    gtk_stack_remove (priv->subpage_stack, gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"));
+}
+
+
+
+PtPage *
+pt_page_get_subpage (PtPage *self)
+{
+  PtPagePrivate *priv;
+
+  g_return_val_if_fail (PT_IS_PAGE (self), NULL);
+
+  priv = pt_page_get_instance_private (self);
+
+  return PT_PAGE (gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"));
 }
 
 
@@ -104,6 +141,9 @@ pt_page_get_property (GObject    *object,
     break;
   case PROP_WIDGET:
     g_value_set_object (value, adw_bin_get_child (priv->bin_widget));
+    break;
+  case PROP_SUBPAGE:
+    g_value_set_object (value, pt_page_get_subpage (self));
     break;
   case PROP_CAN_PROCEED:
     g_value_set_boolean (value, priv->can_proceed);
@@ -146,6 +186,15 @@ pt_page_class_init (PtPageClass *klass)
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
+  signals[ACTIVATED] =
+    g_signal_new ("activated",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   props[PROP_SUMMARY] =
     g_param_spec_string ("summary", "", "",
                          NULL,
@@ -166,6 +215,11 @@ pt_page_class_init (PtPageClass *klass)
                          GTK_TYPE_WIDGET,
                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
+  props[PROP_SUBPAGE] =
+    g_param_spec_object ("subpage", "", "",
+                         PT_TYPE_PAGE,
+                         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
   props[PROP_CAN_PROCEED] =
     g_param_spec_boolean ("can-proceed", "", "",
                           FALSE,
@@ -179,6 +233,7 @@ pt_page_class_init (PtPageClass *klass)
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, lbl_summary);
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, lbl_explanation);
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, bin_widget);
+  gtk_widget_class_bind_template_child_private (widget_class, PtPage, subpage_stack);
 }
 
 
@@ -292,4 +347,24 @@ pt_page_set_can_proceed (PtPage *self, gboolean can_proceed)
 
   priv->can_proceed = can_proceed;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CAN_PROCEED]);
+}
+
+
+void
+pt_page_switch_to_subpage (PtPage *self)
+{
+  PtPagePrivate *priv;
+
+  g_return_if_fail (PT_IS_PAGE (self));
+  priv = pt_page_get_instance_private (self);
+
+  if (!gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"))
+    return;
+
+  if (gtk_stack_get_visible_child (priv->subpage_stack) == gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"))
+    return;
+
+  gtk_stack_set_visible_child_name (priv->subpage_stack, "subpage");
+  g_signal_emit (PT_PAGE (gtk_stack_get_child_by_name (priv->subpage_stack, "subpage")),
+                 signals[ACTIVATED], 0, TRUE);
 }

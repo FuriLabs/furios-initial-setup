@@ -28,5 +28,8 @@ void             pt_page_set_widget        (PtPage *self, GtkWidget *widget);
 GtkWidget       *pt_page_get_widget        (PtPage *self);
 void             pt_page_set_can_proceed   (PtPage *self, gboolean can_proceed);
 gboolean         pt_page_get_can_proceed   (PtPage *self);
+void             pt_page_set_subpage       (PtPage *self, PtPage *subpage);
+PtPage          *pt_page_get_subpage       (PtPage *self);
+void             pt_page_switch_to_subpage (PtPage *self);
 
 G_END_DECLS
