@@ -186,7 +186,7 @@ pt_update_progress_upgrade_done_cb (GObject *client_obj,
   if (error)
   {
     g_warning ("Failed to upgrade packages: %s", error->message);
-    final_message = g_strdup_printf (_("Failed to upgrade packages: %s"), _(error->message));
+    final_message = g_strdup_printf (_("%s: %s"), _("Update failed"), _(error->message));
     gtk_label_set_label (priv->label, final_message);
     g_free (final_message);
     g_error_free (error);
