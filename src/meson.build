@@ -29,6 +29,8 @@ furios_initial_setup_sources = [
   'pt-hw-page.c',
   'run-passwd.h',
   'run-passwd.c',
+  'pt-update-progress.c',
+  'pt-update-progress.h',
 ]
 
 furios_initial_setup_deps = [
@@ -43,6 +45,7 @@ furios_initial_setup_deps = [
   dependency ('libnm', version: '>= 1.2'),
   dependency ('libnma-gtk4', version: '>= 1.0'),
   dependency ('goa-backend-1.0', version: '>= 3.49.0'),
+  dependency ('packagekit-glib2'),
 ]
 
 gnome = import('gnome')

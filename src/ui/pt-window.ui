@@ -214,6 +214,18 @@
                           </object>
                         </property>
                         <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"></property>
+                        <property name="subpage">
+                          <object class="PtPage">
+                            <property name="summary" translatable="yes">Checking for updates</property>
+                            <property name="explanation" translatable="yes">Let’s make sure your FuriPhone is the best version of itself. This might take a couple of minutes.</property>
+                            <property name="widget">
+                              <object class="PtUpdateProgress" id="update_progress">
+                                <property name="valign">fill</property>
+                              </object>
+                            </property>
+                            <signal name="activated" handler="pt_update_begin" object="update_progress" />
+                          </object>
+                        </property>
                       </object>
                     </child>
 

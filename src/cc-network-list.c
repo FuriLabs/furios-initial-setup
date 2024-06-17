@@ -22,6 +22,7 @@
 
 #include "furios-initial-setup-config.h"
 #include "cc-network-list.h"
+#include "pt-page.h"
 
 #include <glib/gi18n.h>
 #include <gio/gio.h>
@@ -142,6 +143,7 @@ static void
 add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
 {
   CcNetworkListPrivate *priv = cc_network_list_get_instance_private (self);
+  PtPage *parent_page;
   GBytes *ssid;
   GBytes *ssid_active = NULL;
   gchar *ssid_text;
@@ -250,6 +252,10 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
   if (activated)
   {
     g_object_set (self, "signal-indicator", "resource:///mobi/phosh/PhoshTour/pages/connected-good.svg", NULL);
+
+    // GHASTLY
+    parent_page = PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
+    pt_page_switch_to_subpage (parent_page);
   }
   else if (activating)
   {

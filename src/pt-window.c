@@ -25,6 +25,7 @@
 #include "cc-online-account-row.h"
 #include "pt-online-accounts.h"
 #include "pt-security-settings.h"
+#include "pt-update-progress.h"
 
 #include <gsettings-desktop-schemas/gdesktop-enums.h>
 #define INTERFACE_PATH_ID "org.gnome.desktop.interface"
@@ -297,6 +298,12 @@ pt_commit_all (PtPage *final_page)
   }
 }
 
+static void
+pt_update_begin (PtUpdateProgress *update_progress)
+{
+  pt_update_progress_begin (update_progress);
+}
+
 static const char *SCREEN_SCALES[] = {"1", "1.25", "1.5", "1.75", "2", "2.25", "2.5", "2.75", "3"};
 static const int SCREEN_SCALES_COUNT = G_N_ELEMENTS (SCREEN_SCALES);
 
@@ -374,6 +381,7 @@ pt_window_class_init (PtWindowClass *klass)
   g_type_ensure (CC_TYPE_ONLINE_ACCOUNT_PROVIDER_ROW);
   g_type_ensure (PT_TYPE_SECURITY_SETTINGS);
   g_type_ensure (PT_TYPE_ONLINE_ACCOUNTS);
+  g_type_ensure (PT_TYPE_UPDATE_PROGRESS);
   g_type_ensure (PT_TYPE_PAGE);
   g_type_ensure (PT_TYPE_HW_PAGE);
 
@@ -404,6 +412,7 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_theme_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
+  gtk_widget_class_bind_template_callback (widget_class, pt_update_begin);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
 }

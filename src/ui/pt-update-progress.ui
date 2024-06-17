@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <template class="PtUpdateProgress" parent="AdwBin">
+    <property name="hexpand">true</property>
+    <property name="vexpand">true</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property>
+        <property name="hexpand">true</property>
+        <property name="halign">fill</property>
+        <property name="spacing">12</property>
+        <child>
+          <object class="GtkLabel" id="label">
+            <property name="visible">true</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="justify">center</property>
+            <property name="wrap">true</property>
+            <property name="wrap-mode">word</property>
+            <property name="margin-bottom">12</property>
+          </object>
+	      </child>
+        <child>
+          <object class="GtkProgressBar" id="progress">
+            <property name="show-text">false</property>
+            <property name="visible">true</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="pulse-step">0.01</property>
+          </object>
+        </child>
+	    </object>
+    </child>
+  </template>
+</interface>

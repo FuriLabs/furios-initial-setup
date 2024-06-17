@@ -4,6 +4,7 @@
     <file preprocess="xml-stripblanks">ui/pt-window.ui</file>
     <file preprocess="xml-stripblanks">ui/pt-page.ui</file>
     <file preprocess="xml-stripblanks">ui/pt-security-settings.ui</file>
+    <file preprocess="xml-stripblanks">ui/pt-update-progress.ui</file>
     <file preprocess="xml-stripblanks">ui/pt-online-accounts.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
     <file alias="style.css">ui/style.css</file>
