@@ -17,6 +17,7 @@ Build-Depends:
  libgoa-1.0-dev (>= 3.45),
  libgoa-backend-1.0-dev (>= 3.45),
  libnma-gtk4-dev (>= 1.10.2) [linux-any],
+ libpackagekit-glib2-dev,
  meson,
 Standards-Version: 4.6.0
 Homepage: https://github.com/FuriLabs/furios-initial-setup
