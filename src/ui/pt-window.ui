@@ -223,6 +223,7 @@
                                 <property name="valign">fill</property>
                               </object>
                             </property>
+                            <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/update.svg</property>
                             <signal name="activated" handler="pt_update_begin" object="update_progress" />
                           </object>
                         </property>
