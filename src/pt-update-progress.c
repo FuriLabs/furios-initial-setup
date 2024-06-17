@@ -23,6 +23,7 @@ typedef struct _PtUpdateProgressPrivate
   gdouble        progress_value;
   gboolean       ready;
   gboolean       did_update_any;
+  gboolean       is_truly_updating;
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
@@ -121,6 +122,11 @@ pt_update_progress_progress_cb (PkProgress *progress,
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   gdouble fraction = pk_progress_get_percentage (progress);
+
+  if (!priv->is_truly_updating)
+  {
+    return;
+  }
 
   if (fraction > 1) {
       priv->progress_value = fraction / 100.0;
@@ -240,6 +246,7 @@ pt_update_progress_get_updates_cb (GObject *client_obj,
   ids = pk_package_sack_get_ids (sack);
 
   priv->did_update_any = TRUE;
+  priv->is_truly_updating = TRUE;
 
   pk_client_update_packages_async (priv->client,
                                    pk_bitfield_from_enums (PK_TRANSACTION_FLAG_ENUM_ONLY_TRUSTED, -1),
@@ -249,6 +256,39 @@ pt_update_progress_get_updates_cb (GObject *client_obj,
                                    self,
                                    pt_update_progress_upgrade_done_cb,
                                    self);
+}
+
+static void
+pt_update_progress_refresh_cache_cb (GObject *client_obj,
+                                     GAsyncResult *res,
+                                     gpointer user_data)
+{
+  PkClient *client = PK_CLIENT (client_obj);
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  GError *error = NULL;
+  gchar *error_message = NULL;
+
+  pk_client_generic_finish (client, res, &error);
+
+  if (error)
+  {
+    g_warning ("Failed to refresh cache: %s", error->message);
+    g_error_free (error);
+    error_message = g_strdup_printf (_("%s: %s"), _("Update failed"), _(error->message));
+    gtk_label_set_label (priv->label, error_message);
+    g_free (error_message);
+    pt_update_progress_finish (self);
+    return;
+  }
+
+  pk_client_get_updates_async (priv->client,
+                               PK_FILTER_ENUM_NONE,
+                               NULL,
+                               NULL,
+                               NULL,
+                               pt_update_progress_get_updates_cb,
+                               self);
 }
 
 void
@@ -261,17 +301,18 @@ pt_update_progress_begin (PtUpdateProgress *self)
   g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
 
   priv->ready = FALSE;
+  priv->is_truly_updating = FALSE;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 
   gtk_label_set_label (priv->label, _("Checking for updates…"));
 
-  pk_client_get_updates_async (priv->client,
-                               PK_FILTER_ENUM_NONE,
-                               NULL,
-                               NULL,
-                               NULL,
-                               pt_update_progress_get_updates_cb,
-                               self);
+  pk_client_refresh_cache_async (priv->client,
+                                 TRUE,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 pt_update_progress_refresh_cache_cb,
+                                 self);
 }
 
 PtUpdateProgress *
