@@ -274,10 +274,10 @@ pt_update_progress_refresh_cache_cb (GObject *client_obj,
   if (error)
   {
     g_warning ("Failed to refresh cache: %s", error->message);
-    g_error_free (error);
-    error_message = g_strdup_printf (_("%s: %s"), _("Update failed"), _(error->message));
+    error_message = g_strdup_printf ("%s: %s", _("Update failed"), _(error->message));
     gtk_label_set_label (priv->label, error_message);
     g_free (error_message);
+    g_error_free (error);
     pt_update_progress_finish (self);
     return;
   }
