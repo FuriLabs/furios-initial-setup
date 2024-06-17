@@ -164,6 +164,7 @@ pt_update_progress_finish (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
 
+  priv->progress_value = 1.0;
   gtk_progress_bar_set_fraction (priv->progress, 1.0);
   gtk_label_set_label (priv->label, _("Good to go!"));
   g_object_set (self, "ready", TRUE, NULL);
