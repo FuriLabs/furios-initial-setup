@@ -19,8 +19,10 @@ typedef struct _PtUpdateProgressPrivate
   PkClient       *client;
   GtkProgressBar *progress;
   GtkLabel       *label;
+  GtkButton      *reboot;
   gdouble        progress_value;
   gboolean       ready;
+  gboolean       did_update_any;
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
@@ -67,6 +69,14 @@ pt_update_progress_get_property (GObject *object,
 }
 
 static void
+on_reboot_clicked (GtkButton *button,
+                   gpointer user_data)
+{
+  // Ugleh, again.
+  g_spawn_command_line_async ("systemctl reboot", NULL);
+}
+
+static void
 pt_update_progress_class_init (PtUpdateProgressClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -89,6 +99,8 @@ pt_update_progress_class_init (PtUpdateProgressClass *klass)
 
   gtk_widget_class_bind_template_child_private (widget_class, PtUpdateProgress, progress);
   gtk_widget_class_bind_template_child_private (widget_class, PtUpdateProgress, label);
+  gtk_widget_class_bind_template_child_private (widget_class, PtUpdateProgress, reboot);
+  gtk_widget_class_bind_template_callback (widget_class, on_reboot_clicked);
 }
 
 static void
@@ -162,8 +174,14 @@ pt_update_progress_finish (PtUpdateProgress *self)
   priv->progress_value = 1.0;
   gtk_progress_bar_set_fraction (priv->progress, 1.0);
   gtk_label_set_label (priv->label, _("Good to go!"));
-  priv->ready = TRUE;
-  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
+
+  if (!priv->did_update_any) {
+    priv->ready = TRUE;
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
+  } else {
+    gtk_widget_set_visible (GTK_WIDGET (priv->reboot), TRUE);
+    gtk_widget_set_visible (GTK_WIDGET (priv->label), FALSE);
+  }
 }
 
 static void
@@ -220,6 +238,8 @@ pt_update_progress_get_updates_cb (GObject *client_obj,
   }
 
   ids = pk_package_sack_get_ids (sack);
+
+  priv->did_update_any = TRUE;
 
   pk_client_update_packages_async (priv->client,
                                    pk_bitfield_from_enums (PK_TRANSACTION_FLAG_ENUM_ONLY_TRUSTED, -1),

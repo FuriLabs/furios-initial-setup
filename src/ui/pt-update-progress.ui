@@ -36,6 +36,23 @@
             <property name="pulse-step">0.01</property>
           </object>
         </child>
+        <child>
+          <object class="GtkButton" id="reboot">
+            <property name="label" translatable="true">Reboot</property>
+            <property name="visible">true</property>
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="margin-top">12</property>
+            <property name="visible">false</property>
+            <signal name="clicked" handler="on_reboot_clicked"/>
+            <style>
+              <class name="pill"/>
+              <class name="suggested-action"/>
+            </style>
+          </object>
+        </child>
 	    </object>
     </child>
   </template>
