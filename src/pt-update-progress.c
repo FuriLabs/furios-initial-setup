@@ -123,12 +123,7 @@ pt_update_progress_progress_cb (PkProgress *progress,
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   gdouble fraction = pk_progress_get_percentage (progress);
 
-  if (!priv->is_truly_updating)
-  {
-    return;
-  }
-
-  if (fraction > 1) {
+  if (fraction > 1 && priv->is_truly_updating) {
       priv->progress_value = fraction / 100.0;
       gtk_progress_bar_set_fraction (priv->progress, priv->progress_value);
   }
