@@ -139,6 +139,8 @@ ap_sort (GtkListBoxRow *a,
   return 0;
 }
 
+static void cancel_periodic_refresh (CcNetworkList *self);
+
 static void
 add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
 {
@@ -252,6 +254,7 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
   if (activated)
   {
     g_object_set (self, "signal-indicator", "resource:///mobi/phosh/PhoshTour/pages/connected-good.svg", NULL);
+    cancel_periodic_refresh (self);
 
     // GHASTLY
     parent_page = PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
@@ -316,6 +319,17 @@ refresh_wireless_list (CcNetworkList *self)
   GPtrArray *unique_aps;
   GtkWidget *child;
   guint i;
+  graphene_point_t out;
+  GtkWidget *window = GTK_WIDGET (gtk_widget_get_root (GTK_WIDGET (self)));
+  gboolean ok = gtk_widget_compute_point (GTK_WIDGET (self), window, &GRAPHENE_POINT_INIT (0, 0), &out);
+
+  if (ok && (out.x < 0 || out.x > gtk_widget_get_width (window) ||
+      out.y < 0 || out.y > gtk_widget_get_height (window)) &&
+      gtk_widget_get_first_child (priv->network_list) != NULL) {
+        // Looks like we're out of bounds and we already have something in the list. Don't waste cycles.
+        g_debug ("Skipping Wi-Fi networks list refresh, widget is out of bounds");
+        goto out;
+  }
 
   g_debug ("Refreshing Wi-Fi networks list");
 
