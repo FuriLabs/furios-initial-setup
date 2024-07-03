@@ -367,4 +367,7 @@ pt_page_switch_to_subpage (PtPage *self)
   gtk_stack_set_visible_child_name (priv->subpage_stack, "subpage");
   g_signal_emit (PT_PAGE (gtk_stack_get_child_by_name (priv->subpage_stack, "subpage")),
                  signals[ACTIVATED], 0, TRUE);
+
+  // Unfocus whatever is focused so the keyboard doesn't get stuck up
+  gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))), NULL);
 }
