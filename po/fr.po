@@ -1,0 +1,122 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: furios-initial-setup\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-07-03 11:22+0100\n"
+"PO-Revision-Date: 2024-07-03 11:22+0100\n"
+"Last-Translator: Jesús Higueras <jesus@dabbleam.com>\n"
+"Language-Team: \n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: GNU nano 6.4\n"
+
+msgid "Next"
+msgstr "Suivant"
+
+msgid "Skip"
+msgstr "Passer"
+
+msgid "Hello!"
+msgstr "Bonjour !"
+
+msgid "Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age."
+msgstr "L’obsolescence programmée, c’est dépassé. Votre nouveau FuriPhone est conçu pour durer et même s’améliorer avec le temps."
+
+msgid "Let’s go online"
+msgstr "Connectons-nous"
+
+msgid "Connect your FuriPhone to the Internet now if you want to update your device before you start using it."
+msgstr "Connectez votre FuriPhone à Internet maintenant si vous souhaitez le mettre à jour avant de commencer à l’utiliser."
+
+msgid "Keep it safe"
+msgstr "La sécurité d’abord"
+
+msgid "Set up a screen lock to keep your device safe. Your PIN or passcode must be at least 6 characters long."
+msgstr "Configurez un verrouillage d’écran pour protéger votre appareil. Votre code PIN ou mot de passe doit comporter au moins 6 caractères."
+
+msgid "Sync your data"
+msgstr "Synchronisez vos données"
+
+msgid "If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone."
+msgstr "Si vous avez un compte en ligne compatible, vous pouvez importer vos contacts, votre calendrier et plus encore sur votre FuriPhone."
+
+msgid "Make it yours"
+msgstr "Personnalisez-le"
+
+msgid "Dark or light mode? Big or small text? Your FuriPhone, your choice."
+msgstr "Mode sombre ou clair ? Texte grand ou petit ? C’est votre FuriPhone, c’est votre choix."
+
+msgid "Leave nothing behind"
+msgstr "Ne laissez rien derrière vous"
+
+msgid "Your Android™ apps are welcome here, so you can choose freedom without compromises."
+msgstr "Vos applications Android™ sont les bienvenues ici, pour que vous puissiez choisir la liberté sans compromis."
+
+msgid "Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License."
+msgstr "Android est une marque déposée de Google LLC. Le robot Android est reproduit ou modifié à partir d’une œuvre créée et partagée par Google, et utilisé selon les conditions décrites dans la licence Creative Commons 3.0 Attribution."
+
+msgid "We’re all ears"
+msgstr "Nous sommes à votre écoute"
+
+msgid "If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care."
+msgstr "Si vous rencontrez des problèmes avec votre FuriPhone, nous sommes là pour vous aider. Pas de bêtises de 'support de premier niveau', juste de vraies personnes qui se soucient de vous."
+
+msgid "And that’s it!"
+msgstr "Et voilà !"
+
+msgid "You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!"
+msgstr "C’est bon ! Votre FuriPhone est fin prêt à devenir votre nouveau compagnon quotidien. Profitez-en bien !"
+
+msgid "Tiny"
+msgstr "Petit"
+
+msgid "Huge"
+msgstr "Énorme"
+
+msgid "Light"
+msgstr "Clair"
+
+msgid "Dark"
+msgstr "Sombre"
+
+msgid "Start automatically"
+msgstr "Démarrer automatiquement"
+
+msgid "Start Android when the phone is turned on"
+msgstr "Lancer Android au démarrage du téléphone"
+
+msgid "PIN or password"
+msgstr "Code PIN ou mot de passe"
+
+msgid "Confirm PIN or password"
+msgstr "Confirmez le code PIN ou le mot de passe"
+
+msgid "Get Started"
+msgstr "Commencer"
+
+msgid "Checking for updates"
+msgstr "Recherche de mises à jour"
+
+msgid "Let’s make sure your FuriPhone is the best version of itself. This might take a couple of minutes."
+msgstr "Assurons-nous que votre FuriPhone soit dans sa meilleure version. Cela peut prendre quelques minutes."
+
+msgid "Checking for updates…"
+msgstr "Recherche de mises à jour…"
+
+msgid "Downloading updates…"
+msgstr "Téléchargement des mises à jour…"
+
+msgid "Installing updates…"
+msgstr "Installation des mises à jour…"
+
+msgid "Good to go!"
+msgstr "Tout est prêt !"
+
+msgid "Update failed"
+msgstr "Échec de la mise à jour"
+
+msgid "Reboot"
+msgstr "Redémarrer"
