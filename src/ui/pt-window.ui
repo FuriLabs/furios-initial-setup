@@ -351,73 +351,72 @@
 
                   </object>
                 </child>
-
-                <child type="overlay">
-                  <object class="GtkButton">
-                    <property name="valign">end</property>
-                    <property name="halign">end</property>
-                    <property name="margin-end">12</property>
-                    <property name="margin-bottom">12</property>
-                    <property name="action-name">win.flip-page</property>
-                    <property name="action-target">1</property>
-                    <property name="child">
-                      <object class="GtkImage">
-                        <property name="pixel-size">16</property>
-                        <property name="icon-name">go-next-symbolic</property>
-                      </object>
-                    </property>
-                    <binding name="visible">
-                      <closure type="gboolean" function="get_btn_next_visible">
-                        <lookup name="position">main_carousel</lookup>
-                        <lookup name="n-pages">main_carousel</lookup>
-                      </closure>
-                    </binding>
-                    <binding name="sensitive">
-                      <closure type="gboolean" function="get_btn_next_sensitive">
-                        <lookup name="position">main_carousel</lookup>
-                        <lookup name="child">carousel_overlay</lookup>
-                      </closure>
-                    </binding>
-                    <style>
-                      <class name="circular"/>
-                      <class name="flat"/>
-                    </style>
-                  </object>
-                </child>
-
-                <child type="overlay">
-                  <object class="GtkButton">
-                    <property name="valign">end</property>
-                    <property name="halign">start</property>
-                    <property name="margin-bottom">12</property>
-                    <property name="margin-start">12</property>
-                    <property name="action-name">win.flip-page</property>
-                    <property name="action-target">-1</property>
-                    <property name="child">
-                      <object class="GtkImage">
-                        <property name="pixel-size">16</property>
-                        <property name="icon-name">go-previous-symbolic</property>
-                      </object>
-                    </property>
-                    <binding name="visible">
-                      <closure type="gboolean" function="get_btn_previous_visible">
-                        <lookup name="position">main_carousel</lookup>
-                      </closure>
-                    </binding>
-                    <binding name="sensitive">
-                      <closure type="gboolean" function="get_btn_previous_sensitive">
-                        <lookup name="position">main_carousel</lookup>
-                        <lookup name="child">carousel_overlay</lookup>
-                      </closure>
-                    </binding>
-                    <style>
-                      <class name="circular"/>
-                      <class name="flat"/>
-                    </style>
-                  </object>
-                </child>
               </object>
             </child>
+          </object>
+        </child>
+        <child type="overlay">
+          <object class="GtkButton">
+            <property name="valign">end</property>
+            <property name="halign">end</property>
+            <property name="margin-end">12</property>
+            <property name="margin-bottom">12</property>
+            <property name="action-name">win.flip-page</property>
+            <property name="action-target">1</property>
+            <property name="child">
+              <object class="GtkImage">
+                <property name="pixel-size">16</property>
+                <property name="icon-name">go-next-symbolic</property>
+              </object>
+            </property>
+            <binding name="visible">
+              <closure type="gboolean" function="get_btn_next_visible">
+                <lookup name="position">main_carousel</lookup>
+                <lookup name="n-pages">main_carousel</lookup>
+              </closure>
+            </binding>
+            <binding name="sensitive">
+              <closure type="gboolean" function="get_btn_next_sensitive">
+                <lookup name="position">main_carousel</lookup>
+                <lookup name="child">carousel_overlay</lookup>
+              </closure>
+            </binding>
+            <style>
+              <class name="circular"/>
+              <class name="flat"/>
+            </style>
+          </object>
+        </child>
+
+        <child type="overlay">
+          <object class="GtkButton">
+            <property name="valign">end</property>
+            <property name="halign">start</property>
+            <property name="margin-bottom">12</property>
+            <property name="margin-start">12</property>
+            <property name="action-name">win.flip-page</property>
+            <property name="action-target">-1</property>
+            <property name="child">
+              <object class="GtkImage">
+                <property name="pixel-size">16</property>
+                <property name="icon-name">go-previous-symbolic</property>
+              </object>
+            </property>
+            <binding name="visible">
+              <closure type="gboolean" function="get_btn_previous_visible">
+                <lookup name="position">main_carousel</lookup>
+              </closure>
+            </binding>
+            <binding name="sensitive">
+              <closure type="gboolean" function="get_btn_previous_sensitive">
+                <lookup name="position">main_carousel</lookup>
+                <lookup name="child">carousel_overlay</lookup>
+              </closure>
+            </binding>
+            <style>
+              <class name="circular"/>
+              <class name="flat"/>
+            </style>
           </object>
         </child>
       </object>
