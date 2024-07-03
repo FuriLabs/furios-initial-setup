@@ -179,7 +179,7 @@
                                         <property name="upper">8</property>
                                         <property name="step-increment">1</property>
                                         <property name="page-increment">1</property>
-                                        <property name="value">4</property>
+                                        <property name="value">7</property>
                                       </object>
                                     </property>
                                     <marks>
@@ -187,7 +187,7 @@
                                       <mark value="1" />
                                       <mark value="2" />
                                       <mark value="3" />
-                                      <mark value="4"></mark>
+                                      <mark value="4" />
                                       <mark value="5" />
                                       <mark value="6" />
                                       <mark value="7" />
