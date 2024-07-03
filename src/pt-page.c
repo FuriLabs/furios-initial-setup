@@ -245,6 +245,9 @@ pt_page_init (PtPage *self)
 
   priv = pt_page_get_instance_private (self);
   priv->can_proceed = TRUE;
+
+  // Prerender ourselves so everything is silky smooth
+  gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
 

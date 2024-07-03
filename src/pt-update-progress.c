@@ -161,6 +161,9 @@ pt_update_progress_pulse_progress_cb (gpointer user_data)
   if (priv->progress_value >= 0.001)
     return G_SOURCE_REMOVE;
 
+  // Unfocus whatever is focused so the keyboard doesn't get stuck up
+  gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))), GTK_WIDGET (priv->progress));
+
   gtk_progress_bar_pulse (priv->progress);
 
   return G_SOURCE_CONTINUE;

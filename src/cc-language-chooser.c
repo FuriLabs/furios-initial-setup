@@ -446,6 +446,10 @@ static void
 walk_all_widgets_recursive (GtkWidget *widget)
 {
   GtkWidget *next_child = gtk_widget_get_first_child (widget);
+
+  // Prerender everything on language change too
+  gtk_widget_queue_draw (widget);
+
   if (GTK_IS_LABEL (widget)) {
     const char *original_text = g_object_get_data (G_OBJECT (widget), "original-text");
     if (!original_text) {
