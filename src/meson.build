@@ -59,3 +59,12 @@ executable('furios-initial-setup', furios_initial_setup_sources,
   dependencies: furios_initial_setup_deps,
   install: true,
 )
+
+executable('furios-update-helper', 'furios-update-helper.c',
+  install: true,
+  install_dir: get_option('libexecdir'),
+  c_args: ['-DGETTEXT_PACKAGE="@0@"'.format(meson.project_name())],
+  dependencies: [
+    glib_dep,
+  ],
+)

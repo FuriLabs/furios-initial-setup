@@ -4,7 +4,7 @@
 
 #include <adwaita.h>
 #include <glib/gi18n.h>
-#include <PackageKit/packagekit-glib2/packagekit.h>
+#include <gio/gunixinputstream.h>
 
 enum
 {
@@ -16,7 +16,6 @@ static GParamSpec *props[PROP_LAST_PROP];
 
 typedef struct _PtUpdateProgressPrivate
 {
-  PkClient       *client;
   GtkProgressBar *progress;
   GtkLabel       *label;
   GtkButton      *reboot;
@@ -24,6 +23,8 @@ typedef struct _PtUpdateProgressPrivate
   gboolean       ready;
   gboolean       did_update_any;
   gboolean       is_truly_updating;
+  GCancellable   *cancellable;
+  GSubprocess    *subprocess;
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
@@ -46,6 +47,27 @@ pt_update_progress_set_property (GObject *object,
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
+  }
+}
+
+static void
+pt_update_progress_finish (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  priv->progress_value = 1.0;
+  gtk_progress_bar_set_fraction (priv->progress, 1.0);
+  gtk_label_set_label (priv->label, _("Good to go!"));
+
+  if (!priv->did_update_any)
+  {
+    priv->ready = TRUE;
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
+  }
+  else
+  {
+    gtk_widget_set_visible (GTK_WIDGET (priv->reboot), TRUE);
+    gtk_widget_set_visible (GTK_WIDGET (priv->label), FALSE);
   }
 }
 
@@ -88,10 +110,10 @@ pt_update_progress_class_init (PtUpdateProgressClass *klass)
 
   props[PROP_READY] =
     g_param_spec_boolean ("ready",
-                         "Ready",
-                         "Whether we're good to go",
-                         TRUE,
-                         G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+                          "Ready",
+                          "Whether we're good to go",
+                          TRUE,
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
@@ -111,210 +133,147 @@ pt_update_progress_init (PtUpdateProgress *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   priv->ready = TRUE;
-  priv->client = pk_client_new ();
 }
 
 static void
-pt_update_progress_progress_cb (PkProgress *progress,
-                                PkProgressType type,
-                                gpointer user_data)
+update_progress_from_output (PtUpdateProgress *self, const gchar *line)
 {
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  gdouble fraction = pk_progress_get_percentage (progress);
+  gchar **parts = g_strsplit (line, "|", 2);
 
-  if (fraction > 1 && priv->is_truly_updating) {
-      priv->progress_value = fraction / 100.0;
-      gtk_progress_bar_set_fraction (priv->progress, priv->progress_value);
-  }
-
-  switch (pk_progress_get_status (progress))
+  if (g_strv_length (parts) == 2)
   {
-    case PK_STATUS_ENUM_DOWNLOAD_REPOSITORY:
-    case PK_STATUS_ENUM_DOWNLOAD_PACKAGELIST:
-    case PK_STATUS_ENUM_DOWNLOAD_FILELIST:
-    case PK_STATUS_ENUM_DOWNLOAD_CHANGELOG:
-    case PK_STATUS_ENUM_DOWNLOAD_UPDATEINFO:
-    case PK_STATUS_ENUM_DOWNLOAD_GROUP:
-    case PK_STATUS_ENUM_LOADING_CACHE:
-    case PK_STATUS_ENUM_REFRESH_CACHE:
+    const gchar *stage = parts[0];
+    int progress = atoi (parts[1]);
+
+    priv->progress_value = progress / 100.0;
+    gtk_progress_bar_set_fraction (priv->progress, priv->progress_value);
+
+    if (g_strcmp0 (stage, "check") == 0)
+    {
       gtk_label_set_label (priv->label, _("Checking for updates…"));
-      break;
-    case PK_STATUS_ENUM_DOWNLOAD:
+    }
+    else if (g_strcmp0 (stage, "download") == 0)
+    {
       gtk_label_set_label (priv->label, _("Downloading updates…"));
-      break;
-    case PK_STATUS_ENUM_INSTALL:
+    }
+    else if (g_strcmp0 (stage, "install") == 0)
+    {
       gtk_label_set_label (priv->label, _("Installing updates…"));
-      break;
-    default:
-      g_warning ("Unhandled progress status: %d", pk_progress_get_status (progress));
-      break;
+      priv->did_update_any = TRUE;
+    }
   }
+  else if (g_strcmp0 (line, "done") == 0)
+  {
+    pt_update_progress_finish (self);
+  }
+
+  g_strfreev (parts);
 }
 
 static gboolean
-pt_update_progress_pulse_progress_cb (gpointer user_data)
+process_subprocess_output (GIOChannel *channel,
+                           GIOCondition condition,
+                           gpointer data)
 {
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (data);
+  gchar *line;
+  gsize length;
+  GIOStatus status;
 
-  if (priv->progress_value >= 0.001)
+  if (condition & G_IO_HUP)
+  {
+    g_io_channel_unref (channel);
     return G_SOURCE_REMOVE;
+  }
 
-  // Unfocus whatever is focused so the keyboard doesn't get stuck up
-  gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))), GTK_WIDGET (priv->progress));
+  status = g_io_channel_read_line (channel, &line, &length, NULL, NULL);
 
-  gtk_progress_bar_pulse (priv->progress);
+  if (status == G_IO_STATUS_NORMAL)
+  {
+    g_strstrip (line);
+    update_progress_from_output (self, line);
+    g_free (line);
+  }
 
   return G_SOURCE_CONTINUE;
 }
 
-
 static void
-pt_update_progress_finish (PtUpdateProgress *self)
+update_helper_spawn_callback (GObject *source_object,
+                              GAsyncResult *res,
+                              gpointer user_data)
 {
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-
-  priv->progress_value = 1.0;
-  gtk_progress_bar_set_fraction (priv->progress, 1.0);
-  gtk_label_set_label (priv->label, _("Good to go!"));
-
-  if (!priv->did_update_any) {
-    priv->ready = TRUE;
-    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
-  } else {
-    gtk_widget_set_visible (GTK_WIDGET (priv->reboot), TRUE);
-    gtk_widget_set_visible (GTK_WIDGET (priv->label), FALSE);
-  }
-}
-
-static void
-pt_update_progress_upgrade_done_cb (GObject *client_obj,
-                                    GAsyncResult *res,
-                                    gpointer user_data)
-{
-  PkClient *client = PK_CLIENT (client_obj);
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   GError *error = NULL;
-  gchar *final_message = NULL;
 
-  pk_client_generic_finish (client, res, &error);
-
-  if (error)
+  if (!g_subprocess_wait_check_finish (G_SUBPROCESS (source_object), res, &error))
   {
-    g_warning ("Failed to upgrade packages: %s", error->message);
-    final_message = g_strdup_printf (_("%s: %s"), _("Update failed"), _(error->message));
-    gtk_label_set_label (priv->label, final_message);
-    g_free (final_message);
+    g_warning ("Helper process failed: %s", error->message);
+    gtk_label_set_label (priv->label, _("Update failed"));
     g_error_free (error);
   }
 
   pt_update_progress_finish (self);
-}
-
-static void
-pt_update_progress_get_updates_cb (GObject *client_obj,
-                                   GAsyncResult *res,
-                                   gpointer user_data)
-{
-  PkClient *client = PK_CLIENT (client_obj);
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  GError *error = NULL;
-  PkResults *results = pk_client_generic_finish (client, res, &error);
-  PkPackageSack *sack = pk_results_get_package_sack (results);
-  gchar **ids;
-
-  if (error)
-  {
-    g_warning ("Failed to get updates: %s", error->message);
-    g_error_free (error);
-    pt_update_progress_finish (self);
-    return;
-  }
-
-  if (pk_package_sack_get_size (sack) == 0)
-  {
-    g_debug ("No updates available");
-    pt_update_progress_finish (self);
-    return;
-  }
-
-  ids = pk_package_sack_get_ids (sack);
-
-  priv->did_update_any = TRUE;
-  priv->is_truly_updating = TRUE;
-
-  pk_client_update_packages_async (priv->client,
-                                   pk_bitfield_from_enums (PK_TRANSACTION_FLAG_ENUM_ONLY_TRUSTED, -1),
-                                   ids,
-                                   NULL,
-                                   pt_update_progress_progress_cb,
-                                   self,
-                                   pt_update_progress_upgrade_done_cb,
-                                   self);
-}
-
-static void
-pt_update_progress_refresh_cache_cb (GObject *client_obj,
-                                     GAsyncResult *res,
-                                     gpointer user_data)
-{
-  PkClient *client = PK_CLIENT (client_obj);
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  GError *error = NULL;
-  gchar *error_message = NULL;
-
-  pk_client_generic_finish (client, res, &error);
-
-  if (error)
-  {
-    g_warning ("Failed to refresh cache: %s", error->message);
-    error_message = g_strdup_printf ("%s: %s", _("Update failed"), _(error->message));
-    gtk_label_set_label (priv->label, error_message);
-    g_free (error_message);
-    g_error_free (error);
-    pt_update_progress_finish (self);
-    return;
-  }
-
-  pk_client_get_updates_async (priv->client,
-                               PK_FILTER_ENUM_NONE,
-                               NULL,
-                               NULL,
-                               NULL,
-                               pt_update_progress_get_updates_cb,
-                               self);
+  g_clear_object (&priv->subprocess);
 }
 
 void
 pt_update_progress_begin (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-
-  // WTF: GTK progress bars need to be manually pumped for the pulse to move
-  // ????????????????? what
-  g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
+  GError *error = NULL;
+  GInputStream *stdout_stream = NULL;
+  GIOChannel *io_channel = NULL;
 
   priv->ready = FALSE;
-  priv->is_truly_updating = FALSE;
+  priv->did_update_any = FALSE;
+  priv->progress_value = 0.0;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 
-  gtk_label_set_label (priv->label, _("Checking for updates…"));
+  gtk_progress_bar_set_fraction (priv->progress, 0.0);
+  gtk_label_set_label (priv->label, _("Preparing to check for updates..."));
+  gtk_widget_set_visible (GTK_WIDGET (priv->reboot), FALSE);
 
-  pk_client_refresh_cache_async (priv->client,
-                                 TRUE,
-                                 NULL,
-                                 NULL,
-                                 NULL,
-                                 pt_update_progress_refresh_cache_cb,
+  if (priv->cancellable)
+  {
+    g_cancellable_cancel (priv->cancellable);
+    g_clear_object (&priv->cancellable);
+  }
+  priv->cancellable = g_cancellable_new ();
+
+  priv->subprocess = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE,
+                                       &error,
+                                       "pkexec",
+                                       "/usr/libexec/furios-update-helper",
+                                       NULL);
+
+  if (error)
+  {
+    g_warning ("Failed to create subprocess: %s", error->message);
+    g_error_free (error);
+    return;
+  }
+
+  stdout_stream = g_subprocess_get_stdout_pipe (priv->subprocess);
+  io_channel = g_io_channel_unix_new (g_unix_input_stream_get_fd (G_UNIX_INPUT_STREAM (stdout_stream)));
+  
+  g_io_channel_set_encoding (io_channel, NULL, NULL);
+  g_io_channel_set_flags (io_channel, G_IO_FLAG_NONBLOCK, NULL);
+  
+  g_io_add_watch (io_channel, G_IO_IN | G_IO_HUP, process_subprocess_output, self);
+
+  g_subprocess_wait_check_async (priv->subprocess,
+                                 priv->cancellable,
+                                 update_helper_spawn_callback,
                                  self);
+
+  g_io_channel_unref (io_channel);
 }
 
 PtUpdateProgress *
 pt_update_progress_new (void)
 {
-  return PT_UPDATE_PROGRESS (g_object_new (PT_TYPE_UPDATE_PROGRESS, NULL));
+  return g_object_new (PT_TYPE_UPDATE_PROGRESS, NULL);
 }

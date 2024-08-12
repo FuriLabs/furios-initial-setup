@@ -37,6 +37,10 @@ install_data('io.furios.InitialSetup.gschema.xml',
   install_dir: join_paths(get_option('datadir'), 'glib-2.0/schemas')
 )
 
+install_data('io.furios.update-helper.policy',
+  install_dir: join_paths(get_option('datadir'), 'polkit-1', 'actions')
+)
+
 compile_schemas = find_program('glib-compile-schemas', required: false)
 if compile_schemas.found()
   test('Validate schema file', compile_schemas,
