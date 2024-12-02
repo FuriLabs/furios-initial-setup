@@ -210,6 +210,7 @@ static void
 create_account (PtOnlineAccounts *self,
                 GoaProvider *provider)
 {
+#if 0
   GtkRoot *parent;
   PtOnlineAccountsPrivate *priv;
 
@@ -223,6 +224,7 @@ create_account (PtOnlineAccounts *self,
                             NULL,
                             (GAsyncReadyCallback) create_account_cb,
                             self);
+#endif
 }
 
 static void
