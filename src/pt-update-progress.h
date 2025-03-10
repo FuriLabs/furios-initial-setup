@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2025 Furi labs
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Author: Bardia Moshiri <bardia@furilabs.com>
+ *         Jesus Higueras <jesus@furilabs.com>
+ */
+
 #pragma once
 
 #include <adwaita.h>
