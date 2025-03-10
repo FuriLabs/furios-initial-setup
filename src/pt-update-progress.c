@@ -16,6 +16,7 @@ static GParamSpec *props[PROP_LAST_PROP];
 
 typedef enum
 {
+  TRANSACTION_TIME_SYNC,
   TRANSACTION_UPDATE_CACHE,
   TRANSACTION_CHECK_UPDATES,
   TRANSACTION_INSTALL_UPDATES
@@ -25,6 +26,7 @@ typedef struct _PtUpdateProgressPrivate
 {
   GDBusProxy     *aptkit_proxy;
   GDBusProxy     *transaction_proxy;
+  GDBusProxy     *timedate_proxy;
   GtkProgressBar *progress;
   GtkLabel       *label;
   GtkButton      *reboot;
@@ -34,9 +36,30 @@ typedef struct _PtUpdateProgressPrivate
   gboolean        had_error;
   gboolean        is_truly_updating;
   TransactionType current_transaction;
+  guint           ntp_sync_attempts;
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
+
+static gboolean
+pt_update_progress_check_valid_date (PtUpdateProgress *self)
+{
+  GDateTime *now;
+  GDateTime *min_date;
+  gboolean valid;
+
+  now = g_date_time_new_now_local ();
+  // This code was written on 2025-03-10, so if we get a date before that, it means
+  // we're not correctly synced up yet...
+  min_date = g_date_time_new_local (2025, 3, 10, 0, 0, 0);
+  
+  valid = g_date_time_compare (now, min_date) >= 0;
+  
+  g_date_time_unref (now);
+  g_date_time_unref (min_date);
+  
+  return valid;
+}
 
 static void
 pt_update_progress_set_property (GObject *object,
@@ -142,6 +165,8 @@ pt_update_progress_init (PtUpdateProgress *self)
   priv->ready = TRUE;
   priv->aptkit_proxy = NULL;
   priv->transaction_proxy = NULL;
+  priv->timedate_proxy = NULL;
+  priv->ntp_sync_attempts = 0;
   
   g_dbus_proxy_new_for_bus (G_BUS_TYPE_SYSTEM,
                             G_DBUS_PROXY_FLAGS_NONE,
@@ -191,6 +216,156 @@ pt_update_progress_finish (PtUpdateProgress *self)
     gtk_widget_set_visible (GTK_WIDGET (priv->reboot), TRUE);
     gtk_widget_set_visible (GTK_WIDGET (priv->label), FALSE);
   }
+}
+
+static void aptkit_update_cache_cb (GObject *source_object,
+                                   GAsyncResult *res,
+                                   gpointer user_data);
+
+static void
+pt_update_progress_start_update_cache (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  gchar *error_message = NULL;
+  
+  priv->current_transaction = TRANSACTION_UPDATE_CACHE;
+  gtk_label_set_label (priv->label, _("Checking for updates…"));
+  
+  if (priv->aptkit_proxy) {
+    g_dbus_proxy_call (priv->aptkit_proxy,
+                      "UpdateCache",
+                      g_variant_new ("()"),
+                      G_DBUS_CALL_FLAGS_NONE,
+                      -1,
+                      NULL,
+                      aptkit_update_cache_cb,
+                      self);
+  } else {
+    g_warning ("Cannot check for updates, aptkit proxy not available");
+    priv->had_error = TRUE;
+    error_message = g_strdup_printf ("%s: %s", _("Update failed"), _("aptkit not available"));
+    gtk_label_set_label (priv->label, error_message);
+    g_free (error_message);
+    pt_update_progress_finish (self);
+  }
+}
+
+static void
+set_ntp_cb (GObject *source_object,
+           GAsyncResult *res,
+           gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  GError *error = NULL;
+  GVariant *result;
+  GVariant *ntp_value;
+  gboolean ntp_active = FALSE;
+
+  result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
+  if (result == NULL) {
+    g_warning ("Failed to set NTP: %s", error->message);
+    g_error_free (error);
+    
+    if (priv->ntp_sync_attempts < 3) {
+      priv->ntp_sync_attempts++;
+      g_dbus_proxy_call (priv->timedate_proxy,
+                        "SetNTP",
+                        g_variant_new ("(bb)", TRUE, TRUE),
+                        G_DBUS_CALL_FLAGS_NONE,
+                        -1,
+                        NULL,
+                        set_ntp_cb,
+                        self);
+      return;
+    } else {
+      priv->had_error = TRUE;
+      gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
+      pt_update_progress_finish (self);
+      return;
+    }
+  }
+  
+  g_variant_unref (result);
+  
+  ntp_value = g_dbus_proxy_get_cached_property (priv->timedate_proxy, "NTP");
+  if (ntp_value != NULL) {
+    ntp_active = g_variant_get_boolean (ntp_value);
+    g_variant_unref (ntp_value);
+  }
+  
+  if (ntp_active && pt_update_progress_check_valid_date (self)) {
+    // NTP is active and date is valid, proceed with updates
+    pt_update_progress_start_update_cache (self);
+  } else if (priv->ntp_sync_attempts < 3) {
+    priv->ntp_sync_attempts++;
+    g_dbus_proxy_call (priv->timedate_proxy,
+                      "SetNTP",
+                      g_variant_new ("(bb)", TRUE, TRUE),
+                      G_DBUS_CALL_FLAGS_NONE,
+                      -1,
+                      NULL,
+                      set_ntp_cb,
+                      self);
+  } else if (!pt_update_progress_check_valid_date (self)) {
+    // NTP failed 3 times in a row AND our date still looks wrong... give up.
+    priv->had_error = TRUE;
+    gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
+    pt_update_progress_finish (self);
+  }
+}
+
+static void
+timedate_proxy_setup_cb (GObject *source_object,
+                         GAsyncResult *res,
+                         gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  GError *error = NULL;
+  gchar *error_message = NULL;
+  GDBusProxy *proxy;
+
+  proxy = g_dbus_proxy_new_for_bus_finish (res, &error);
+  if (proxy == NULL) {
+    g_warning ("Failed to connect to timedate1: %s", error->message);
+    g_error_free (error);
+    
+    // Fall back to update cache directly
+    priv->current_transaction = TRANSACTION_UPDATE_CACHE;
+    gtk_label_set_label (priv->label, _("Checking for updates…"));
+    
+    if (priv->aptkit_proxy) {
+      g_dbus_proxy_call (priv->aptkit_proxy,
+                        "UpdateCache",
+                        g_variant_new ("()"),
+                        G_DBUS_CALL_FLAGS_NONE,
+                        -1,
+                        NULL,
+                        aptkit_update_cache_cb,
+                        self);
+    } else {
+      g_warning ("Cannot check for updates, aptkit proxy not available");
+      priv->had_error = TRUE;
+      error_message = g_strdup_printf ("%s: %s", _("Update failed"), _("aptkit not available"));
+      gtk_label_set_label (priv->label, error_message);
+      g_free (error_message);
+      pt_update_progress_finish (self);
+    }
+    return;
+  }
+
+  priv->timedate_proxy = proxy;
+  
+  gtk_label_set_label (priv->label, _("Synchronizing system clock…"));
+  g_dbus_proxy_call (proxy,
+                    "SetNTP",
+                    g_variant_new ("(bb)", TRUE, TRUE),
+                    G_DBUS_CALL_FLAGS_NONE,
+                    -1,
+                    NULL,
+                    set_ntp_cb,
+                    self);
 }
 
 static void
@@ -469,7 +644,6 @@ void
 pt_update_progress_begin (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  gchar *error_message = NULL;
 
   // WTF: GTK progress bars need to be manually pumped for the pulse to move
   // ????????????????? what
@@ -479,29 +653,25 @@ pt_update_progress_begin (PtUpdateProgress *self)
   priv->is_truly_updating = FALSE;
   priv->did_update_any = FALSE;
   priv->had_error = FALSE;
-  priv->current_transaction = TRANSACTION_UPDATE_CACHE;
+  priv->ntp_sync_attempts = 0;
+  priv->current_transaction = TRANSACTION_TIME_SYNC;
+  priv->progress_value = 0.0;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 
-  gtk_label_set_label (priv->label, _("Checking for updates…"));
+  gtk_progress_bar_set_fraction (priv->progress, 0.0);
+  gtk_widget_set_visible (GTK_WIDGET (priv->label), TRUE);
   gtk_widget_set_visible (GTK_WIDGET (priv->reboot), FALSE);
+  gtk_label_set_label (priv->label, _("Synchronizing system clock…"));
 
-  if (priv->aptkit_proxy) {
-    g_dbus_proxy_call (priv->aptkit_proxy,
-                      "UpdateCache",
-                      g_variant_new ("()"),
-                      G_DBUS_CALL_FLAGS_NONE,
-                      -1,
-                      NULL,
-                      aptkit_update_cache_cb,
-                      self);
-  } else {
-    g_warning ("Cannot check for updates, aptkit proxy not available");
-    priv->had_error = TRUE;
-    error_message = g_strdup_printf ("%s: %s", _("Update failed"), _("aptkit not available"));
-    gtk_label_set_label (priv->label, error_message);
-    g_free (error_message);
-    pt_update_progress_finish (self);
-  }
+  g_dbus_proxy_new_for_bus (G_BUS_TYPE_SYSTEM,
+                            G_DBUS_PROXY_FLAGS_NONE,
+                            NULL,
+                            "org.freedesktop.timedate1",
+                            "/org/freedesktop/timedate1",
+                            "org.freedesktop.timedate1",
+                            NULL,
+                            timedate_proxy_setup_cb,
+                            self);
 }
 
 static void
