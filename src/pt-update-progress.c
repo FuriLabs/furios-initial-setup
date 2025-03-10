@@ -4,7 +4,7 @@
 
 #include <adwaita.h>
 #include <glib/gi18n.h>
-#include <PackageKit/packagekit-glib2/packagekit.h>
+#include <gio/gio.h>
 
 enum
 {
@@ -14,20 +14,29 @@ enum
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
+typedef enum
+{
+  TRANSACTION_UPDATE_CACHE,
+  TRANSACTION_CHECK_UPDATES,
+  TRANSACTION_INSTALL_UPDATES
+} TransactionType;
+
 typedef struct _PtUpdateProgressPrivate
 {
-  PkClient       *client;
+  GDBusProxy     *aptkit_proxy;
+  GDBusProxy     *transaction_proxy;
   GtkProgressBar *progress;
   GtkLabel       *label;
   GtkButton      *reboot;
-  gdouble        progress_value;
-  gboolean       ready;
-  gboolean       did_update_any;
-  gboolean       is_truly_updating;
+  gdouble         progress_value;
+  gboolean        ready;
+  gboolean        did_update_any;
+  gboolean        had_error;
+  gboolean        is_truly_updating;
+  TransactionType current_transaction;
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
-
 
 static void
 pt_update_progress_set_property (GObject *object,
@@ -105,51 +114,44 @@ pt_update_progress_class_init (PtUpdateProgressClass *klass)
 }
 
 static void
+aptkit_proxy_setup_cb (GObject *source_object,
+                       GAsyncResult *res,
+                       gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  GError *error = NULL;
+  GDBusProxy *proxy;
+
+  proxy = g_dbus_proxy_new_for_bus_finish (res, &error);
+  if (proxy == NULL) {
+    g_warning ("Failed to connect to aptkit: %s", error->message);
+    g_error_free (error);
+    return;
+  }
+
+  priv->aptkit_proxy = proxy;
+}
+
+static void
 pt_update_progress_init (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   gtk_widget_init_template (GTK_WIDGET (self));
 
   priv->ready = TRUE;
-  priv->client = pk_client_new ();
-}
-
-static void
-pt_update_progress_progress_cb (PkProgress *progress,
-                                PkProgressType type,
-                                gpointer user_data)
-{
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  gdouble fraction = pk_progress_get_percentage (progress);
-
-  if (fraction > 1 && priv->is_truly_updating) {
-      priv->progress_value = fraction / 100.0;
-      gtk_progress_bar_set_fraction (priv->progress, priv->progress_value);
-  }
-
-  switch (pk_progress_get_status (progress))
-  {
-    case PK_STATUS_ENUM_DOWNLOAD_REPOSITORY:
-    case PK_STATUS_ENUM_DOWNLOAD_PACKAGELIST:
-    case PK_STATUS_ENUM_DOWNLOAD_FILELIST:
-    case PK_STATUS_ENUM_DOWNLOAD_CHANGELOG:
-    case PK_STATUS_ENUM_DOWNLOAD_UPDATEINFO:
-    case PK_STATUS_ENUM_DOWNLOAD_GROUP:
-    case PK_STATUS_ENUM_LOADING_CACHE:
-    case PK_STATUS_ENUM_REFRESH_CACHE:
-      gtk_label_set_label (priv->label, _("Checking for updates…"));
-      break;
-    case PK_STATUS_ENUM_DOWNLOAD:
-      gtk_label_set_label (priv->label, _("Downloading updates…"));
-      break;
-    case PK_STATUS_ENUM_INSTALL:
-      gtk_label_set_label (priv->label, _("Installing updates…"));
-      break;
-    default:
-      g_warning ("Unhandled progress status: %d", pk_progress_get_status (progress));
-      break;
-  }
+  priv->aptkit_proxy = NULL;
+  priv->transaction_proxy = NULL;
+  
+  g_dbus_proxy_new_for_bus (G_BUS_TYPE_SYSTEM,
+                            G_DBUS_PROXY_FLAGS_NONE,
+                            NULL,
+                            "org.aptkit",
+                            "/org/aptkit",
+                            "org.aptkit",
+                            NULL,
+                            aptkit_proxy_setup_cb,
+                            self);
 }
 
 static gboolean
@@ -169,7 +171,6 @@ pt_update_progress_pulse_progress_cb (gpointer user_data)
   return G_SOURCE_CONTINUE;
 }
 
-
 static void
 pt_update_progress_finish (PtUpdateProgress *self)
 {
@@ -177,7 +178,11 @@ pt_update_progress_finish (PtUpdateProgress *self)
 
   priv->progress_value = 1.0;
   gtk_progress_bar_set_fraction (priv->progress, 1.0);
-  gtk_label_set_label (priv->label, _("Good to go!"));
+
+  if (!priv->had_error) {
+    gtk_label_set_label (priv->label, _("Good to go!"));
+    gtk_widget_set_visible (GTK_WIDGET (priv->label), TRUE);
+  }
 
   if (!priv->did_update_any) {
     priv->ready = TRUE;
@@ -189,89 +194,254 @@ pt_update_progress_finish (PtUpdateProgress *self)
 }
 
 static void
-pt_update_progress_upgrade_done_cb (GObject *client_obj,
-                                    GAsyncResult *res,
-                                    gpointer user_data)
+aptkit_transaction_run_cb (GObject *source_object,
+                          GAsyncResult *res,
+                          gpointer user_data)
 {
-  PkClient *client = PK_CLIENT (client_obj);
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   GError *error = NULL;
-  gchar *final_message = NULL;
+  GVariant *result;
 
-  pk_client_generic_finish (client, res, &error);
-
-  if (error)
-  {
-    g_warning ("Failed to upgrade packages: %s", error->message);
-    final_message = g_strdup_printf (_("%s: %s"), _("Update failed"), _(error->message));
-    gtk_label_set_label (priv->label, final_message);
-    g_free (final_message);
+  result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
+  if (result == NULL) {
+    g_warning ("Failed to run transaction: %s", error->message);
     g_error_free (error);
+    return;
   }
-
-  pt_update_progress_finish (self);
+  
+  g_variant_unref (result);
 }
 
 static void
-pt_update_progress_get_updates_cb (GObject *client_obj,
-                                   GAsyncResult *res,
-                                   gpointer user_data)
+aptkit_upgrade_system_cb (GObject *source_object,
+                         GAsyncResult *res,
+                         gpointer user_data);
+
+static void
+aptkit_get_updates (PtUpdateProgress *self)
 {
-  PkClient *client = PK_CLIENT (client_obj);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  
+  if (!priv->aptkit_proxy) {
+    g_warning ("Cannot get updates, aptkit proxy not available");
+    pt_update_progress_finish (self);
+    return;
+  }
+  
+  g_dbus_proxy_call (priv->aptkit_proxy,
+                    "UpgradeSystem",
+                    g_variant_new ("(b)", TRUE),
+                    G_DBUS_CALL_FLAGS_NONE,
+                    -1,
+                    NULL,
+                    aptkit_upgrade_system_cb,
+                    self);
+}
+
+static gboolean
+aptkit_check_for_updates (PtUpdateProgress *self, GVariant *packages, GVariant *dependencies)
+{
+  g_autoptr(GVariant) pkg_upgrades = NULL;
+  g_autoptr(GVariant) dep_upgrades = NULL;
+  g_autoptr(GVariant) pkg_downgrades = NULL;
+  g_autoptr(GVariant) dep_downgrades = NULL;
+  GVariantIter iter;
+
+  pkg_upgrades = g_variant_get_child_value (packages, 4);
+  dep_upgrades = g_variant_get_child_value (dependencies, 4);
+
+  pkg_downgrades = g_variant_get_child_value (packages, 5);
+  dep_downgrades = g_variant_get_child_value (dependencies, 5);
+
+  // Check for upgrades
+  g_variant_iter_init (&iter, pkg_upgrades);
+  if (g_variant_iter_n_children (&iter) > 0)
+    return TRUE;
+
+  // Check for package downgrades
+  g_variant_iter_init (&iter, pkg_downgrades);
+  if (g_variant_iter_n_children (&iter) > 0)
+    return TRUE;
+
+  // Check for dependency upgrades
+  g_variant_iter_init (&iter, dep_upgrades);
+  if (g_variant_iter_n_children (&iter) > 0)
+    return TRUE;
+
+  // Check for dependency downgrades
+  g_variant_iter_init (&iter, dep_downgrades);
+  if (g_variant_iter_n_children (&iter) > 0)
+    return TRUE;
+
+  // OK, nothing to see here
+  return FALSE;
+}
+
+static void 
+aptkit_transaction_signal_cb (GDBusProxy *proxy,
+                             const gchar *sender_name,
+                             const gchar *signal_name,
+                             GVariant *parameters,
+                             gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  
+  if (g_strcmp0 (signal_name, "PropertyChanged") == 0) {
+    const gchar *property_name;
+    GVariant *value;
+    g_variant_get (parameters, "(&sv)", &property_name, &value);
+
+    if (g_strcmp0 (property_name, "ExitState") == 0) {
+      const gchar *exit_state;
+      g_variant_get (value, "&s", &exit_state);
+      g_debug ("Exit state changed to: %s", exit_state);
+
+      if (g_strcmp0 (exit_state, "exit-success") == 0) {
+        if (priv->current_transaction == TRANSACTION_UPDATE_CACHE) {
+          priv->current_transaction = TRANSACTION_CHECK_UPDATES;
+          aptkit_get_updates (self);
+        } else if (priv->current_transaction == TRANSACTION_CHECK_UPDATES) {
+          if (priv->did_update_any) {
+            priv->current_transaction = TRANSACTION_INSTALL_UPDATES;
+            priv->is_truly_updating = TRUE;
+            gtk_label_set_label (priv->label, _("Installing updates…"));
+            
+            g_dbus_proxy_call (priv->aptkit_proxy,
+                              "UpgradeSystem",
+                              g_variant_new ("(b)", FALSE),
+                              G_DBUS_CALL_FLAGS_NONE,
+                              -1,
+                              NULL,
+                              aptkit_upgrade_system_cb,
+                              self);
+          } else {
+            pt_update_progress_finish (self);
+          }
+        } else if (priv->current_transaction == TRANSACTION_INSTALL_UPDATES) {
+          pt_update_progress_finish (self);
+        }
+      } else if (g_strcmp0 (exit_state, "exit-failed") == 0 ||
+                g_strcmp0 (exit_state, "exit-cancelled") == 0 ||
+                g_strcmp0 (exit_state, "exit-previous-failed") == 0) {
+        g_warning ("Transaction failed with state: %s", exit_state);
+        priv->had_error = TRUE;
+        gtk_label_set_label (priv->label, _("Update failed"));
+        pt_update_progress_finish (self);
+      }
+    } 
+    else if (g_strcmp0 (property_name, "Progress") == 0 && priv->current_transaction == TRANSACTION_INSTALL_UPDATES) {
+      gint progress;
+      g_variant_get (value, "i", &progress);
+      if (progress > 0) {
+        priv->progress_value = (gdouble) progress / 100.0;
+        gtk_progress_bar_set_fraction (priv->progress, priv->progress_value);
+      }
+    }
+    else if (g_strcmp0 (property_name, "Status") == 0) {
+      const gchar *status;
+      g_variant_get (value, "&s", &status);
+      
+      if (g_str_has_prefix (status, "downloading")) {
+        gtk_label_set_label (priv->label, _("Downloading updates…"));
+      } else if (g_str_has_prefix (status, "installing")) {
+        gtk_label_set_label (priv->label, _("Installing updates…"));
+      } else if (g_str_has_prefix (status, "refreshing")) {
+        gtk_label_set_label (priv->label, _("Checking for updates…"));
+      }
+    }
+    else if (g_strcmp0 (property_name, "Packages") == 0 ||
+             g_strcmp0 (property_name, "Dependencies") == 0) {
+      g_autoptr(GVariant) packages = NULL;
+      g_autoptr(GVariant) dependencies = NULL;
+      
+      // Get both properties - one will be the 'value' parameter, get the other from proxy
+      if (g_strcmp0 (property_name, "Packages") == 0) {
+        packages = g_variant_ref (value);
+        dependencies = g_dbus_proxy_get_cached_property (proxy, "Dependencies");
+      } else {
+        dependencies = g_variant_ref (value);
+        packages = g_dbus_proxy_get_cached_property (proxy, "Packages");
+      }
+      
+      if (packages != NULL && dependencies != NULL && 
+          priv->current_transaction == TRANSACTION_CHECK_UPDATES) {
+        gboolean have_updates = aptkit_check_for_updates (self, packages, dependencies);
+        
+        if (have_updates) {
+          priv->did_update_any = TRUE;
+          priv->current_transaction = TRANSACTION_INSTALL_UPDATES;
+          priv->is_truly_updating = TRUE;
+          gtk_label_set_label (priv->label, _("Installing updates…"));
+          
+          g_dbus_proxy_call (priv->aptkit_proxy,
+                            "UpgradeSystem",
+                            g_variant_new ("(b)", FALSE),
+                            G_DBUS_CALL_FLAGS_NONE,
+                            -1,
+                            NULL,
+                            aptkit_upgrade_system_cb,
+                            self);
+        } else {
+          pt_update_progress_finish (self);
+        }
+      }
+    }
+    
+    g_variant_unref (value);
+  }
+}
+
+static void
+aptkit_transaction_proxy_cb (GObject *source_object,
+                            GAsyncResult *res,
+                            gpointer user_data)
+{
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   GError *error = NULL;
-  PkResults *results = pk_client_generic_finish (client, res, &error);
-  PkPackageSack *sack = pk_results_get_package_sack (results);
-  gchar **ids;
+  GDBusProxy *transaction_proxy;
 
-  if (error)
-  {
-    g_warning ("Failed to get updates: %s", error->message);
+  transaction_proxy = g_dbus_proxy_new_finish (res, &error);
+  if (transaction_proxy == NULL) {
+    g_warning ("Failed to create transaction proxy: %s", error->message);
     g_error_free (error);
     pt_update_progress_finish (self);
     return;
   }
 
-  if (pk_package_sack_get_size (sack) == 0)
-  {
-    g_debug ("No updates available");
-    pt_update_progress_finish (self);
-    return;
-  }
+  g_clear_object (&priv->transaction_proxy);
+  priv->transaction_proxy = transaction_proxy;
+  
+  g_signal_connect (transaction_proxy, "g-signal",
+                   G_CALLBACK (aptkit_transaction_signal_cb),
+                   self);
 
-  ids = pk_package_sack_get_ids (sack);
-
-  priv->did_update_any = TRUE;
-  priv->is_truly_updating = TRUE;
-
-  pk_client_update_packages_async (priv->client,
-                                   pk_bitfield_from_enums (PK_TRANSACTION_FLAG_ENUM_ONLY_TRUSTED, -1),
-                                   ids,
-                                   NULL,
-                                   pt_update_progress_progress_cb,
-                                   self,
-                                   pt_update_progress_upgrade_done_cb,
-                                   self);
+  g_dbus_proxy_call (transaction_proxy,
+                    (priv->current_transaction == TRANSACTION_CHECK_UPDATES) ? "Simulate" : "Run",
+                    g_variant_new ("()"),
+                    G_DBUS_CALL_FLAGS_NONE,
+                    -1,
+                    NULL,
+                    aptkit_transaction_run_cb,
+                    NULL);
 }
 
 static void
-pt_update_progress_refresh_cache_cb (GObject *client_obj,
-                                     GAsyncResult *res,
-                                     gpointer user_data)
+aptkit_update_cache_cb (GObject *source_object,
+                       GAsyncResult *res,
+                       gpointer user_data)
 {
-  PkClient *client = PK_CLIENT (client_obj);
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   GError *error = NULL;
   gchar *error_message = NULL;
+  GVariant *result;
+  const gchar *transaction_path;
 
-  pk_client_generic_finish (client, res, &error);
-
-  if (error)
-  {
+  result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
+  if (result == NULL) {
     g_warning ("Failed to refresh cache: %s", error->message);
+    priv->had_error = TRUE;
     error_message = g_strdup_printf ("%s: %s", _("Update failed"), _(error->message));
     gtk_label_set_label (priv->label, error_message);
     g_free (error_message);
@@ -280,19 +450,26 @@ pt_update_progress_refresh_cache_cb (GObject *client_obj,
     return;
   }
 
-  pk_client_get_updates_async (priv->client,
-                               PK_FILTER_ENUM_NONE,
-                               NULL,
-                               NULL,
-                               NULL,
-                               pt_update_progress_get_updates_cb,
-                               self);
+  g_variant_get (result, "(&s)", &transaction_path);
+  g_debug ("Got transaction path: %s", transaction_path);
+  g_variant_unref (result);
+
+  g_dbus_proxy_new (g_dbus_proxy_get_connection (priv->aptkit_proxy),
+                   G_DBUS_PROXY_FLAGS_NONE,
+                   NULL,
+                   "org.aptkit",
+                   transaction_path,
+                   "org.aptkit.transaction",
+                   NULL,
+                   aptkit_transaction_proxy_cb,
+                   self);
 }
 
 void
 pt_update_progress_begin (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  gchar *error_message = NULL;
 
   // WTF: GTK progress bars need to be manually pumped for the pulse to move
   // ????????????????? what
@@ -300,17 +477,69 @@ pt_update_progress_begin (PtUpdateProgress *self)
 
   priv->ready = FALSE;
   priv->is_truly_updating = FALSE;
+  priv->did_update_any = FALSE;
+  priv->had_error = FALSE;
+  priv->current_transaction = TRANSACTION_UPDATE_CACHE;
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 
   gtk_label_set_label (priv->label, _("Checking for updates…"));
+  gtk_widget_set_visible (GTK_WIDGET (priv->reboot), FALSE);
 
-  pk_client_refresh_cache_async (priv->client,
-                                 TRUE,
-                                 NULL,
-                                 NULL,
-                                 NULL,
-                                 pt_update_progress_refresh_cache_cb,
-                                 self);
+  if (priv->aptkit_proxy) {
+    g_dbus_proxy_call (priv->aptkit_proxy,
+                      "UpdateCache",
+                      g_variant_new ("()"),
+                      G_DBUS_CALL_FLAGS_NONE,
+                      -1,
+                      NULL,
+                      aptkit_update_cache_cb,
+                      self);
+  } else {
+    g_warning ("Cannot check for updates, aptkit proxy not available");
+    priv->had_error = TRUE;
+    error_message = g_strdup_printf ("%s: %s", _("Update failed"), _("aptkit not available"));
+    gtk_label_set_label (priv->label, error_message);
+    g_free (error_message);
+    pt_update_progress_finish (self);
+  }
+}
+
+static void
+aptkit_upgrade_system_cb (GObject *source_object,
+                         GAsyncResult *res,
+                         gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  GError *error = NULL;
+  gchar *error_message = NULL;
+  GVariant *result;
+  const gchar *transaction_path;
+
+  result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
+  if (result == NULL) {
+    g_warning ("Failed to initiate system upgrade: %s", error->message);
+    priv->had_error = TRUE;
+    error_message = g_strdup_printf ("%s: %s", _("Update failed"), _(error->message));
+    gtk_label_set_label (priv->label, error_message);
+    g_free (error_message);
+    g_error_free (error);
+    pt_update_progress_finish (self);
+    return;
+  }
+
+  g_variant_get (result, "(&s)", &transaction_path);
+  g_variant_unref (result);
+
+  g_dbus_proxy_new (g_dbus_proxy_get_connection (priv->aptkit_proxy),
+                   G_DBUS_PROXY_FLAGS_NONE,
+                   NULL,
+                   "org.aptkit",
+                   transaction_path,
+                   "org.aptkit.transaction",
+                   NULL,
+                   aptkit_transaction_proxy_cb,
+                   self);
 }
 
 PtUpdateProgress *
