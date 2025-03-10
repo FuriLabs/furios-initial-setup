@@ -45,7 +45,6 @@ furios_initial_setup_deps = [
   dependency ('libnm', version: '>= 1.2'),
   dependency ('libnma-gtk4', version: '>= 1.0'),
   dependency ('goa-backend-1.0', version: '>= 3.49.0'),
-  dependency ('packagekit-glib2'),
 ]
 
 gnome = import('gnome')
