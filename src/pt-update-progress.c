@@ -18,7 +18,12 @@
 #include <libsoup/soup.h>
 #include "ed25519/ed25519.h"
 
-#define PROVISION_URL "https://repo.furios.io/provision-script"
+#define PROVISION_URL "http://provision.furios.io/"
+// PROVISION_URL being HTTP instead of HTTPS is OK because any script
+// that we need to run from that host will be signed with the key below
+// We use HTTP instead of HTTPS so that we can ensure we'll be able to
+// hot-patch any issues even if time sync fails, or Let's Encrypt stops
+// being trusted, or anything else that's out of our control.
 #define PROVISION_KEY "E4jOdnqXFR0mhBf6E+NAOxLvmAgteppg+b7CBJmy3j8="
 
 enum
