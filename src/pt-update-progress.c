@@ -4,7 +4,13 @@
 
 #include <adwaita.h>
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <libsoup/soup.h>
+#include "ed25519/ed25519.h"
+
+#define PROVISION_URL "https://repo.furios.io/provision-script"
+#define PROVISION_KEY "E4jOdnqXFR0mhBf6E+NAOxLvmAgteppg+b7CBJmy3j8="
 
 enum
 {
@@ -17,6 +23,7 @@ static GParamSpec *props[PROP_LAST_PROP];
 typedef enum
 {
   TRANSACTION_TIME_SYNC,
+  TRANSACTION_PROVISION_CHECK,
   TRANSACTION_UPDATE_CACHE,
   TRANSACTION_CHECK_UPDATES,
   TRANSACTION_INSTALL_UPDATES
@@ -52,12 +59,12 @@ pt_update_progress_check_valid_date (PtUpdateProgress *self)
   // This code was written on 2025-03-10, so if we get a date before that, it means
   // we're not correctly synced up yet...
   min_date = g_date_time_new_local (2025, 3, 10, 0, 0, 0);
-  
+
   valid = g_date_time_compare (now, min_date) >= 0;
-  
+
   g_date_time_unref (now);
   g_date_time_unref (min_date);
-  
+
   return valid;
 }
 
@@ -167,7 +174,7 @@ pt_update_progress_init (PtUpdateProgress *self)
   priv->transaction_proxy = NULL;
   priv->timedate_proxy = NULL;
   priv->ntp_sync_attempts = 0;
-  
+
   g_dbus_proxy_new_for_bus (G_BUS_TYPE_SYSTEM,
                             G_DBUS_PROXY_FLAGS_NONE,
                             NULL,
@@ -218,6 +225,185 @@ pt_update_progress_finish (PtUpdateProgress *self)
   }
 }
 
+static void
+pt_update_progress_start_update_cache (PtUpdateProgress *self);
+
+static void
+provision_message_complete_cb (GObject *source,
+                              GAsyncResult *result,
+                              gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  SoupSession *session = SOUP_SESSION (source);
+  SoupMessageHeaders *response_headers;
+  const char *signature_base64 = NULL;
+  guchar *signature = NULL;
+  gsize signature_len = -1;
+  guchar *key = NULL;
+  gsize key_len = -1;
+  SoupMessage *msg = NULL;
+  GError *error = NULL;
+  GBytes *bytes = soup_session_send_and_read_finish (SOUP_SESSION (source), result, &error);
+  gconstpointer data;
+  gsize length;
+  gchar *script_path = NULL;
+  guint status;
+
+  msg = soup_session_get_async_result_message (session, result);
+  status = soup_message_get_status (msg);
+
+  if (status == SOUP_STATUS_NO_CONTENT) {
+    // 204 No Content - nothing to do
+    g_debug ("No provisioning script available");
+    goto fail;
+  } else if (status != SOUP_STATUS_OK) {
+    // Not 200 OK - just continue
+    g_warning ("Provision check failed with status %d", status);
+    goto fail;
+  }
+
+  response_headers = soup_message_get_response_headers (msg);
+  if (!response_headers) {
+    g_debug ("No response headers");
+    goto fail;
+  }
+
+  signature_base64 = soup_message_headers_get_one (response_headers, "X-Furi-Signature");
+  if (!signature_base64 || !signature_base64[0]) {
+    g_debug("Missing X-Furi-Signature");
+    goto fail;
+  }
+
+  signature = g_base64_decode (signature_base64, &signature_len);
+  if (!signature) {
+    g_debug ("X-Furi-Signature was not a valid base64 string");
+    goto fail;
+  }
+
+  if (signature_len != 64) {
+    g_debug ("X-Furi-Signature has an invalid length (%ld)", signature_len);
+    goto fail;
+  }
+
+  key = g_base64_decode (PROVISION_KEY, &key_len);
+
+  // 200 OK - guess we got something to do!
+  data = g_bytes_get_data (bytes, &length);
+
+  if (length == 0) {
+    g_debug ("Empty response from provision check");
+    goto fail;
+  }
+
+  if (!ed25519_verify (signature, data, length, key)) {
+    g_debug ("Provision script signature check failed", length);
+    goto fail;
+  } else {
+    g_debug ("Provision script signature check PASSED");
+  }
+
+  // Hell yeah, signature check passed too. It's time to RUN IT
+  script_path = g_build_filename (g_get_tmp_dir (), "furios-provision", NULL);
+  close (g_mkstemp (script_path));
+
+  g_file_set_contents (script_path, data, length, &error);
+  if (error) {
+    g_warning ("Failed to write provision script: %s", error->message);
+    goto fail;
+  }
+
+  if (g_chmod (script_path, 0755) < 0) {
+    g_warning ("Failed to make provision script executable: %s", g_strerror (errno));
+    goto fail;
+  }
+
+  g_debug ("Executing provision script: %s", script_path);
+
+  g_spawn_command_line_sync (script_path, NULL, NULL, NULL, &error);
+  if (error) {
+    g_warning ("Failed to execute provision script: %s", error->message);
+  }
+
+fail:
+  if (script_path)
+    g_free (script_path);
+
+  pt_update_progress_start_update_cache (self);
+  return;
+}
+
+static void
+pt_update_progress_start_provision_check (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  SoupSession *session;
+  SoupMessage *msg;
+  GBytes *bytes;
+  g_autoptr(GError) error = NULL;
+  GString *post_data;
+  gchar *command_output = NULL;
+  gint exit_status;
+
+  priv->current_transaction = TRANSACTION_PROVISION_CHECK;
+  gtk_label_set_label (priv->label, _("Checking for updates…"));
+
+  post_data = g_string_new ("");
+
+  if (g_spawn_command_line_sync ("uname -a", &command_output, NULL, &exit_status, &error) && exit_status == 0) {
+    g_string_append_printf (post_data, "uname=%s&", g_uri_escape_string (g_strstrip (command_output), NULL, TRUE));
+    g_free (command_output);
+    command_output = NULL;
+  } else {
+    g_warning ("Failed to execute uname: %s", error ? error->message : "unknown error");
+    g_clear_error (&error);
+  }
+
+  if (g_spawn_command_line_sync ("getprop ro.vendor.build.version.sdk", &command_output, NULL, &exit_status, &error) && exit_status == 0) {
+    g_string_append_printf (post_data, "sdk_version=%s&", g_uri_escape_string (g_strstrip (command_output), NULL, TRUE));
+    g_free (command_output);
+    command_output = NULL;
+  } else {
+    g_warning ("Failed to get SDK version: %s", error ? error->message : "unknown error");
+    g_clear_error (&error);
+  }
+
+  if (g_spawn_command_line_sync ("getprop ro.vendor.build.date.utc", &command_output, NULL, &exit_status, &error) && exit_status == 0) {
+    g_string_append_printf (post_data, "build_date=%s&", g_uri_escape_string (g_strstrip (command_output), NULL, TRUE));
+    g_free (command_output);
+    command_output = NULL;
+  } else {
+    g_warning ("Failed to get build date: %s", error ? error->message : "unknown error");
+    g_clear_error (&error);
+  }
+
+  if (g_spawn_command_line_sync ("getprop ro.vendor.build.fingerprint", &command_output, NULL, &exit_status, &error) && exit_status == 0) {
+    g_string_append_printf (post_data, "build_fingerprint=%s&", g_uri_escape_string (g_strstrip (command_output), NULL, TRUE));
+    g_free (command_output);
+    command_output = NULL;
+  } else {
+    g_warning ("Failed to get build fingerprint: %s", error ? error->message : "unknown error");
+    g_clear_error (&error);
+  }
+
+  if (g_file_get_contents ("/usr/share/furios-branding/furios-version", &command_output, NULL, &error)) {
+    g_string_append_printf (post_data, "furios_version=%s", g_uri_escape_string (g_strstrip (command_output), NULL, TRUE));
+    g_free (command_output);
+    command_output = NULL;
+  } else {
+    g_warning ("Failed to read FuriOS version: %s", error ? error->message : "unknown error");
+    g_clear_error (&error);
+  }
+
+  session = soup_session_new ();
+  msg = soup_message_new ("POST", PROVISION_URL);
+
+  bytes = g_bytes_new (post_data->str, post_data->len);
+  soup_message_set_request_body_from_bytes (msg, "application/x-www-form-urlencoded", bytes);
+
+  soup_session_send_and_read_async (session, msg, G_PRIORITY_DEFAULT, NULL,
+                          provision_message_complete_cb, self);
+}
+
 static void aptkit_update_cache_cb (GObject *source_object,
                                    GAsyncResult *res,
                                    gpointer user_data);
@@ -227,10 +413,10 @@ pt_update_progress_start_update_cache (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   gchar *error_message = NULL;
-  
+
   priv->current_transaction = TRANSACTION_UPDATE_CACHE;
   gtk_label_set_label (priv->label, _("Checking for updates…"));
-  
+
   if (priv->aptkit_proxy) {
     g_dbus_proxy_call (priv->aptkit_proxy,
                       "UpdateCache",
@@ -266,7 +452,7 @@ set_ntp_cb (GObject *source_object,
   if (result == NULL) {
     g_warning ("Failed to set NTP: %s", error->message);
     g_error_free (error);
-    
+
     if (priv->ntp_sync_attempts < 3) {
       priv->ntp_sync_attempts++;
       g_dbus_proxy_call (priv->timedate_proxy,
@@ -285,18 +471,18 @@ set_ntp_cb (GObject *source_object,
       return;
     }
   }
-  
+
   g_variant_unref (result);
-  
+
   ntp_value = g_dbus_proxy_get_cached_property (priv->timedate_proxy, "NTP");
   if (ntp_value != NULL) {
     ntp_active = g_variant_get_boolean (ntp_value);
     g_variant_unref (ntp_value);
   }
-  
+
   if (ntp_active && pt_update_progress_check_valid_date (self)) {
     // NTP is active and date is valid, proceed with updates
-    pt_update_progress_start_update_cache (self);
+    pt_update_progress_start_provision_check (self);
   } else if (priv->ntp_sync_attempts < 3) {
     priv->ntp_sync_attempts++;
     g_dbus_proxy_call (priv->timedate_proxy,
@@ -323,40 +509,22 @@ timedate_proxy_setup_cb (GObject *source_object,
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
   GError *error = NULL;
-  gchar *error_message = NULL;
   GDBusProxy *proxy;
 
   proxy = g_dbus_proxy_new_for_bus_finish (res, &error);
   if (proxy == NULL) {
     g_warning ("Failed to connect to timedate1: %s", error->message);
     g_error_free (error);
-    
-    // Fall back to update cache directly
-    priv->current_transaction = TRANSACTION_UPDATE_CACHE;
+
+    priv->current_transaction = TRANSACTION_PROVISION_CHECK;
     gtk_label_set_label (priv->label, _("Checking for updates…"));
-    
-    if (priv->aptkit_proxy) {
-      g_dbus_proxy_call (priv->aptkit_proxy,
-                        "UpdateCache",
-                        g_variant_new ("()"),
-                        G_DBUS_CALL_FLAGS_NONE,
-                        -1,
-                        NULL,
-                        aptkit_update_cache_cb,
-                        self);
-    } else {
-      g_warning ("Cannot check for updates, aptkit proxy not available");
-      priv->had_error = TRUE;
-      error_message = g_strdup_printf ("%s: %s", _("Update failed"), _("aptkit not available"));
-      gtk_label_set_label (priv->label, error_message);
-      g_free (error_message);
-      pt_update_progress_finish (self);
-    }
+
+    pt_update_progress_start_provision_check (self);
     return;
   }
 
   priv->timedate_proxy = proxy;
-  
+
   gtk_label_set_label (priv->label, _("Synchronizing system clock…"));
   g_dbus_proxy_call (proxy,
                     "SetNTP",
@@ -382,7 +550,7 @@ aptkit_transaction_run_cb (GObject *source_object,
     g_error_free (error);
     return;
   }
-  
+
   g_variant_unref (result);
 }
 
@@ -395,13 +563,13 @@ static void
 aptkit_get_updates (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  
+
   if (!priv->aptkit_proxy) {
     g_warning ("Cannot get updates, aptkit proxy not available");
     pt_update_progress_finish (self);
     return;
   }
-  
+
   g_dbus_proxy_call (priv->aptkit_proxy,
                     "UpgradeSystem",
                     g_variant_new ("(b)", TRUE),
@@ -451,7 +619,7 @@ aptkit_check_for_updates (PtUpdateProgress *self, GVariant *packages, GVariant *
   return FALSE;
 }
 
-static void 
+static void
 aptkit_transaction_signal_cb (GDBusProxy *proxy,
                              const gchar *sender_name,
                              const gchar *signal_name,
@@ -460,7 +628,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  
+
   if (g_strcmp0 (signal_name, "PropertyChanged") == 0) {
     const gchar *property_name;
     GVariant *value;
@@ -480,7 +648,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
             priv->current_transaction = TRANSACTION_INSTALL_UPDATES;
             priv->is_truly_updating = TRUE;
             gtk_label_set_label (priv->label, _("Installing updates…"));
-            
+
             g_dbus_proxy_call (priv->aptkit_proxy,
                               "UpgradeSystem",
                               g_variant_new ("(b)", FALSE),
@@ -503,7 +671,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
         gtk_label_set_label (priv->label, _("Update failed"));
         pt_update_progress_finish (self);
       }
-    } 
+    }
     else if (g_strcmp0 (property_name, "Progress") == 0 && priv->current_transaction == TRANSACTION_INSTALL_UPDATES) {
       gint progress;
       g_variant_get (value, "i", &progress);
@@ -515,7 +683,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
     else if (g_strcmp0 (property_name, "Status") == 0) {
       const gchar *status;
       g_variant_get (value, "&s", &status);
-      
+
       if (g_str_has_prefix (status, "downloading")) {
         gtk_label_set_label (priv->label, _("Downloading updates…"));
       } else if (g_str_has_prefix (status, "installing")) {
@@ -528,7 +696,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
              g_strcmp0 (property_name, "Dependencies") == 0) {
       g_autoptr(GVariant) packages = NULL;
       g_autoptr(GVariant) dependencies = NULL;
-      
+
       // Get both properties - one will be the 'value' parameter, get the other from proxy
       if (g_strcmp0 (property_name, "Packages") == 0) {
         packages = g_variant_ref (value);
@@ -537,17 +705,17 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
         dependencies = g_variant_ref (value);
         packages = g_dbus_proxy_get_cached_property (proxy, "Packages");
       }
-      
-      if (packages != NULL && dependencies != NULL && 
+
+      if (packages != NULL && dependencies != NULL &&
           priv->current_transaction == TRANSACTION_CHECK_UPDATES) {
         gboolean have_updates = aptkit_check_for_updates (self, packages, dependencies);
-        
+
         if (have_updates) {
           priv->did_update_any = TRUE;
           priv->current_transaction = TRANSACTION_INSTALL_UPDATES;
           priv->is_truly_updating = TRUE;
           gtk_label_set_label (priv->label, _("Installing updates…"));
-          
+
           g_dbus_proxy_call (priv->aptkit_proxy,
                             "UpgradeSystem",
                             g_variant_new ("(b)", FALSE),
@@ -561,7 +729,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
         }
       }
     }
-    
+
     g_variant_unref (value);
   }
 }
@@ -586,7 +754,7 @@ aptkit_transaction_proxy_cb (GObject *source_object,
 
   g_clear_object (&priv->transaction_proxy);
   priv->transaction_proxy = transaction_proxy;
-  
+
   g_signal_connect (transaction_proxy, "g-signal",
                    G_CALLBACK (aptkit_transaction_signal_cb),
                    self);
