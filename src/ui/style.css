@@ -32,15 +32,15 @@ image.symbolic-circular
 
 headerbar
 {
-	margin-top: 12px;
-	margin-right: 12px;
-	background: none;
-	border: none;
+    margin-top: 12px;
+    margin-right: 12px;
+    background: none;
+    border: none;
 }
 
 windowhandle headerbar
 {
-	box-shadow: none;
+    box-shadow: none;
 }
 
 .legalese
@@ -50,7 +50,7 @@ windowhandle headerbar
 
 .success-underlay
 {
-    background-image: url('resource:///mobi/phosh/PhoshTour/pages/success-backdrop.svg');
+    background-image: url('resource:///io/furios/InitialSetup/pages/success-backdrop.svg');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: bottom;

@@ -228,7 +228,7 @@ pt_page_class_init (PtPageClass *klass)
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class,
-                                               "/mobi/phosh/PhoshTour/ui/pt-page.ui");
+                                               "/io/furios/InitialSetup/ui/pt-page.ui");
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, image);
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, lbl_summary);
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, lbl_explanation);

@@ -1,5 +1,5 @@
 project('furios-initial-setup', 'c',
-          version: '0.39.0',
+          version: '1.0.0',
     meson_version: '>= 0.58.0',
   default_options: [ 'warning_level=2',
                      'werror=false',
@@ -10,7 +10,6 @@ project('furios-initial-setup', 'c',
 application_id = 'io.furios.InitialSetup'
 prefix = get_option('prefix')
 libdir = join_paths(prefix, get_option('libdir'))
-plugins_dir = join_paths(prefix, libdir, 'phosh', 'plugins')
 
 glib_ver = '2.74'
 glib_ver_str = 'GLIB_VERSION_@0@'.format(glib_ver.replace('.','_'))
@@ -105,12 +104,12 @@ add_project_arguments(
 config_h = configuration_data()
 config_h.set_quoted('GETTEXT_PACKAGE', 'furios-initial-setup')
 config_h.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
-config_h.set_quoted('PHOSH_TOUR_APP', meson.project_name())
-config_h.set_quoted('PHOSH_TOUR_BRAND', get_option('brand'))
-config_h.set_quoted('PHOSH_TOUR_URL', get_option('url'))
-config_h.set_quoted('PHOSH_TOUR_VENDOR', get_option('vendor'))
-config_h.set_quoted('PHOSH_TOUR_VERSION', meson.project_version())
-config_h.set_quoted('PHOSH_TOUR_APP_ID', application_id)
+config_h.set_quoted('INITIAL_SETUP_APP', meson.project_name())
+config_h.set_quoted('INITIAL_SETUP_BRAND', get_option('brand'))
+config_h.set_quoted('INITIAL_SETUP_URL', get_option('url'))
+config_h.set_quoted('INITIAL_SETUP_VENDOR', get_option('vendor'))
+config_h.set_quoted('INITIAL_SETUP_VERSION', meson.project_version())
+config_h.set_quoted('INITIAL_SETUP_APP_ID', application_id)
 
 configure_file(
   output: 'furios-initial-setup-config.h',

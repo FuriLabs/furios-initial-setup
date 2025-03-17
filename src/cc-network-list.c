@@ -253,7 +253,7 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
 
   if (activated)
   {
-    g_object_set (self, "signal-indicator", "resource:///mobi/phosh/PhoshTour/pages/connected-good.svg", NULL);
+    g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/connected-good.svg", NULL);
     cancel_periodic_refresh (self);
 
     // GHASTLY
@@ -262,7 +262,7 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
   }
   else if (activating)
   {
-    g_object_set (self, "signal-indicator", "resource:///mobi/phosh/PhoshTour/pages/connected-ok.svg", NULL);
+    g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/connected-ok.svg", NULL);
   }
 
   g_object_set_data (G_OBJECT (row), "object-path", (gpointer) object_path);
@@ -334,7 +334,7 @@ refresh_wireless_list (CcNetworkList *self)
   g_debug ("Refreshing Wi-Fi networks list");
 
   priv->refreshing = TRUE;
-  g_object_set (self, "signal-indicator", "resource:///mobi/phosh/PhoshTour/pages/not-connected.svg", NULL);
+  g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/not-connected.svg", NULL);
 
   g_assert (NM_IS_DEVICE_WIFI (priv->nm_device));
 
@@ -348,10 +348,8 @@ refresh_wireless_list (CcNetworkList *self)
 
   aps = nm_device_wifi_get_access_points (NM_DEVICE_WIFI (priv->nm_device));
 
-  if (aps == NULL || aps->len == 0) {
+  if (aps == NULL || aps->len == 0)
     goto out;
-
-  }
 
   unique_aps = get_strongest_unique_aps (aps);
   for (i = 0; i < unique_aps->len; i++) {
@@ -556,6 +554,16 @@ find_best_device (CcNetworkList *self)
   sync_complete (self);
 }
 
+static gboolean
+find_best_device_wrapper (gpointer user_data)
+{
+  CcNetworkList *self = CC_NETWORK_LIST (user_data);
+
+  find_best_device (self);
+
+  return G_SOURCE_REMOVE;
+}
+
 static void
 cc_network_list_constructed (GObject *object)
 {
@@ -580,7 +588,7 @@ cc_network_list_constructed (GObject *object)
     return;
   }
 
-  find_best_device (self);
+  g_timeout_add_seconds (1, (GSourceFunc) find_best_device_wrapper, self);
 }
 
 static void
@@ -638,10 +646,10 @@ cc_network_list_class_init (CcNetworkListClass *klass)
   object_class->get_property = cc_network_list_get_property;
   object_class->set_property = cc_network_list_set_property;
 
-  gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (klass), "/org/gnome/control-center/network-list.ui");
+  gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (klass), "/io/furios/InitialSetup/network-list.ui");
 
   gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (klass), CcNetworkList, network_list);
-  
+
   props[PROP_SIGNAL_INDICATOR_PICTURE] =
     g_param_spec_string ("signal-indicator",
                          "Signal Indicator",

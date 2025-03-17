@@ -139,9 +139,9 @@ update_password_match (PtSecuritySettings *self)
 
 static void
 pt_security_settings_set_property (GObject *object,
-                                  guint property_id,
-                                  const GValue *value,
-                                  GParamSpec *pspec)
+                                   guint property_id,
+                                   const GValue *value,
+                                   GParamSpec *pspec)
 {
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
@@ -159,9 +159,9 @@ pt_security_settings_set_property (GObject *object,
 
 static void
 pt_security_settings_get_property (GObject *object,
-                                  guint property_id,
-                                  GValue *value,
-                                  GParamSpec *pspec)
+                                   guint property_id,
+                                   GValue *value,
+                                   GParamSpec *pspec)
 {
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
@@ -188,17 +188,17 @@ pt_security_settings_class_init (PtSecuritySettingsClass *klass)
 
   props[PROP_READY] =
     g_param_spec_boolean ("ready",
-                         "Ready",
-                         "Whether the user has entered a valid password",
-                         FALSE,
-                         G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+                          "Ready",
+                          "Whether the user has entered a valid password",
+                          FALSE,
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
   object_class->finalize = pt_security_settings_finalize;
 
   gtk_widget_class_set_template_from_resource (widget_class,
-                                              "/mobi/phosh/PhoshTour/ui/pt-security-settings.ui");
+                                              "/io/furios/InitialSetup/ui/pt-security-settings.ui");
 
   gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, password_entry);
   gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, verify_entry);

@@ -45,7 +45,7 @@
                   <object class="AdwCarousel" id="main_carousel">
                     <property name="margin-bottom">24</property>
                     <!-- I know this disables swipe back even when we just want to disable swipe next, but there's
-                        no way to disable swipe next that I can see and we gotta ship in a couple days, so... -->
+                         no way to disable swipe next that I can see and we gotta ship in a couple days, so... -->
                     <binding name="interactive">
                       <closure type="gboolean" function="get_btn_next_sensitive">
                         <lookup name="position">main_carousel</lookup>
@@ -54,7 +54,7 @@
                     </binding>
                     <child>
                       <object class="PtPage" id="language-page">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/welcome.svg</property>
+                        <property name="image-uri">resource:///io/furios/InitialSetup/pages/welcome.svg</property>
                         <property name="summary" translatable="yes">Hello!</property>
                         <property name="explanation" translatable="yes">Planned obsolescence is so last century. Your new FuriPhone is designed to last, and even get better with age.</property>
                         <property name="widget">
@@ -68,7 +68,7 @@
 
                     <child>
                       <object class="PtPage" id="theming-page">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/customize.svg</property>
+                        <property name="image-uri">resource:///io/furios/InitialSetup/pages/customize.svg</property>
                         <property name="summary" translatable="yes">Make it yours</property>
                         <property name="explanation" translatable="yes">Dark or light mode? Big or small text? Your FuriPhone, your choice.</property>
                         <property name="widget">
@@ -97,7 +97,7 @@
                                         </accessibility>
                                         <child>
                                           <object class="GtkPicture" id="default_preview">
-                                            <property name="file">resource:///mobi/phosh/PhoshTour/pages/default.svg</property>
+                                            <property name="file">resource:///io/furios/InitialSetup/pages/default.svg</property>
                                           </object>
                                         </child>
                                         <style>
@@ -130,7 +130,7 @@
                                         </accessibility>
                                         <child>
                                           <object class="GtkPicture" id="dark_preview">
-                                            <property name="file">resource:///mobi/phosh/PhoshTour/pages/dark.svg</property>
+                                            <property name="file">resource:///io/furios/InitialSetup/pages/dark.svg</property>
                                           </object>
                                         </child>
                                         <style>
@@ -223,7 +223,7 @@
                                 <property name="valign">fill</property>
                               </object>
                             </property>
-                            <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/update.svg</property>
+                            <property name="image-uri">resource:///io/furios/InitialSetup/pages/update.svg</property>
                             <signal name="activated" handler="pt_update_begin" object="update_progress" />
                           </object>
                         </property>
@@ -233,7 +233,7 @@
 
                     <child>
                       <object class="PtPage" id="security-page">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/padlock.svg</property>
+                        <property name="image-uri">resource:///io/furios/InitialSetup/pages/padlock.svg</property>
                         <property name="summary" translatable="yes">Keep it safe</property>
                         <property name="explanation" translatable="yes">Set up a screen lock to keep your device safe. Your PIN or passcode must be at least 6 characters long.</property>
                         <property name="widget">
@@ -246,22 +246,9 @@
                       </object>
                     </child>
 
-                    <!-- <child>
-                      <object class="PtPage">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/quick-settings.svg</property>
-                        <property name="summary" translatable="yes">Sync your data</property>
-                        <property name="explanation" translatable="yes">If you have a compatible online account, you can bring your contacts, calendar, and more to your FuriPhone.</property>
-                        <property name="widget">
-                          <object class="PtOnlineAccounts">
-                            <property name="valign">fill</property>
-                          </object>
-                        </property>
-                      </object>
-                    </child> -->
-
                     <child>
                       <object class="PtPage">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/android.svg</property>
+                        <property name="image-uri">resource:///io/furios/InitialSetup/pages/android.svg</property>
                         <property name="summary" translatable="yes">Leave nothing behind</property>
                         <property name="explanation" translatable="yes">Your Android™ apps are welcome here, so you can choose freedom without compromises.</property>
                         <property name="widget">
@@ -281,9 +268,9 @@
                                     <property name="subtitle" translatable="yes">Start Android when the phone is turned on</property>
                                     <property name="use-underline">true</property>
                                     <child>
-                                      <object class="GtkSwitch" id="waydroid_autostart_switch">
+                                      <object class="GtkSwitch" id="android_autostart_switch">
                                         <property name="valign">center</property>
-                                        <property name="active" bind-source="PtWindow" bind-property="waydroid_autostart" bind-flags="sync-create | bidirectional"></property>
+                                        <property name="active" bind-source="PtWindow" bind-property="android_autostart" bind-flags="sync-create | bidirectional"></property>
                                         <accessibility>
                                           <property name="label" translatable="yes">Enabled</property>
                                         </accessibility>
@@ -308,19 +295,9 @@
                       </object>
                     </child>
 
-<!--
                     <child>
                       <object class="PtPage">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/slide-to-unlock.svg</property>
-                        <property name="summary" translatable="yes">We’re all ears</property>
-                        <property name="explanation" translatable="yes">If you run into any issues with your FuriPhone, we’re here to help. No “tier 1 support” nonsense, just real people who care.</property>
-                      </object>
-                    </child>
--->
-
-                    <child>
-                      <object class="PtPage">
-                        <property name="image-uri">resource:///mobi/phosh/PhoshTour/pages/all-set.svg</property>
+                        <property name="image-uri">resource:///io/furios/InitialSetup/pages/all-set.svg</property>
                         <property name="summary" translatable="yes">And that’s it!</property>
                         <property name="explanation" translatable="yes">You’re all set! Your FuriPhone is ready to become your new daily driver. Enjoy the ride!</property>
                         <property name="widget">

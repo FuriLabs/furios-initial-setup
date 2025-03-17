@@ -32,7 +32,7 @@ main (int argc, char *argv[])
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
 
-  app = pt_application_new (PHOSH_TOUR_APP_ID, G_APPLICATION_DEFAULT_FLAGS);
+  app = pt_application_new (INITIAL_SETUP_APP_ID, G_APPLICATION_DEFAULT_FLAGS);
   ret = g_application_run (G_APPLICATION (app), argc, argv);
 
   return ret;

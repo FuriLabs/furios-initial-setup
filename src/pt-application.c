@@ -17,7 +17,7 @@
 
 #include "cc-common-language.h"
 
-#define DESC _("- A graphical tour introducing your device")
+#define DESC _("- An initial setup for your device")
 
 struct _PtApplication {
   GtkApplication parent_instance;
@@ -62,7 +62,7 @@ static int
 pt_application_handle_local_options (GApplication *app, GVariantDict *options)
 {
   if (g_variant_dict_contains (options, "version")) {
-    g_print ("%s %s %s\n", PHOSH_TOUR_APP, PHOSH_TOUR_VERSION, DESC);
+    g_print ("%s %s %s\n", INITIAL_SETUP_APP, INITIAL_SETUP_VERSION, DESC);
 
     return 0;
   }
@@ -84,10 +84,4 @@ pt_application_class_init (PtApplicationClass *klass)
 static void
 pt_application_init (PtApplication *self)
 {
-  g_autoptr (GtkCssProvider) css_provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (css_provider, "/mobi/phosh/PhoshTour/style.css");
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (),
-                                              GTK_STYLE_PROVIDER (css_provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }

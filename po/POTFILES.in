@@ -1,6 +1,3 @@
-data/mobi.phosh.PhoshTour.desktop.in.in
-data/mobi.phosh.PhoshTour.metainfo.xml.in.in
-src/gtk/help-overlay.ui
 src/main.c
 src/pt-application.c
 src/ui/pt-window.ui

@@ -157,7 +157,7 @@ pt_update_progress_class_init (PtUpdateProgressClass *klass)
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class,
-                                               "/mobi/phosh/PhoshTour/ui/pt-update-progress.ui");
+                                               "/io/furios/InitialSetup/ui/pt-update-progress.ui");
 
   gtk_widget_class_bind_template_child_private (widget_class, PtUpdateProgress, progress);
   gtk_widget_class_bind_template_child_private (widget_class, PtUpdateProgress, label);

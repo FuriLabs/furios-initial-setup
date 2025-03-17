@@ -462,8 +462,8 @@ walk_all_widgets_recursive (GtkWidget *widget)
       return;
 
     // TODO: this does not work with string substitutions
-    // printf ("Original text: %s\n", original_text);
-    // printf ("Translated text: %s\n", _(original_text));
+    // g_print ("Original text: %s\n", original_text);
+    // g_print ("Translated text: %s\n", _(original_text));
     gtk_label_set_text (GTK_LABEL (widget), _(original_text));
   }
 
@@ -600,7 +600,7 @@ cc_language_chooser_class_init (CcLanguageChooserClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (klass), "/org/gnome/control-center/language-chooser.ui");
+  gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (klass), "/io/furios/InitialSetup/language-chooser.ui");
 
   gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (klass), CcLanguageChooser, language_list);
 
@@ -671,7 +671,7 @@ cc_set_localed_locale (CcLanguageChooser *chooser,
     g_variant_builder_add (b, "s", paper_value);
   }
 
-  printf ("dbus: Setting locale to %s\n", locale_id);
+  g_print ("dbus: Setting locale to %s\n", locale_id);
   g_dbus_proxy_call (priv->localed,
                      "SetLocale",
                      g_variant_new ("(asb)", b, TRUE),
@@ -687,7 +687,7 @@ cc_language_chooser_apply (CcLanguageChooser *chooser)
   if (priv->language == NULL || priv->user == NULL)
     return;
 
-  printf ("Setting language to %s\n", priv->language);
+  g_print ("Setting language to %s\n", priv->language);
   act_user_set_language (priv->user, priv->language);
   cc_set_localed_locale (chooser, priv->language);
 }

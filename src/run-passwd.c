@@ -35,11 +35,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#if __sun
-#include <sys/types.h>
-#include <signal.h>
-#endif
-
 #include "run-passwd.h"
 
 /* Passwd states */
@@ -552,6 +547,14 @@ io_watch_stdout (GIOChannel *source, GIOCondition condition, PasswdHandler *pass
                                 reinit = TRUE;
                         }
                         break;
+                case PASSWD_STATE_DONE:
+                    /* Nothing to do here, already finished */
+                    reinit = TRUE;
+                    break;
+                case PASSWD_STATE_ERR:
+                    /* Error already handled */
+                    reinit = TRUE;
+                    break;
                 default:
                         /* Passwd has returned an error */
                         reinit = TRUE;
@@ -633,6 +636,12 @@ passwd_destroy (PasswdHandler *passwd_handler)
         g_free (passwd_handler);
 }
 
+static void
+free_queue_element (gpointer data, gpointer user_data)
+{
+        g_free (data);
+}
+
 void
 passwd_authenticate (PasswdHandler *passwd_handler,
                      const char    *current_password,
@@ -649,7 +658,7 @@ passwd_authenticate (PasswdHandler *passwd_handler,
         passwd_handler->new_password = NULL;
         passwd_handler->chpasswd_cb = NULL;
         passwd_handler->chpasswd_cb_data = NULL;
-        g_queue_foreach (passwd_handler->backend_stdin_queue, (GFunc) g_free, NULL);
+        g_queue_foreach (passwd_handler->backend_stdin_queue, free_queue_element, NULL);
         g_queue_clear (passwd_handler->backend_stdin_queue);
 
         passwd_handler->current_password = current_password;

@@ -8,18 +8,14 @@ Build-Depends:
  desktop-file-utils,
  libadwaita-1-dev,
  libgtk-4-dev,
- libjson-glib-dev,
- libsensors-dev,
  libgmobile-dev,
  libgnome-desktop-4-dev,
  libaccountsservice-dev (>= 0.6.39),
  libnm-dev (>= 1.24.0) [linux-any],
- libgoa-1.0-dev (>= 3.45),
- libgoa-backend-1.0-dev (>= 3.45),
  libnma-gtk4-dev (>= 1.10.2) [linux-any],
  libsoup-3.0-dev,
  meson,
-Standards-Version: 4.6.0
+Standards-Version: 4.7.0
 Homepage: https://github.com/FuriLabs/furios-initial-setup
 Rules-Requires-Root: no
 
