@@ -238,7 +238,9 @@ language_widget_update (LanguageWidget *widget)
 
   if (country_name) {
     label = gtk_widget_get_last_child (widget->box);
-    gtk_label_set_text (GTK_LABEL (label), country_name);
+    if (GTK_IS_LABEL (label)) {
+      gtk_label_set_text (GTK_LABEL (label), country_name);
+    }
   }
 
   g_free (language);
