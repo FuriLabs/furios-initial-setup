@@ -200,7 +200,6 @@
                             </child>
                           </object>
                         </property>
-                        <signal name="apply-changes" handler="pt_commit_theme_settings" object="theming-page" />
                       </object>
                     </child>
 

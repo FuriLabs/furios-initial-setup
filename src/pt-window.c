@@ -49,7 +49,6 @@ struct _PtWindow {
   int                 pending_commits;
 
   GSettings           *interface_settings;
-  gboolean            wants_dark_mode;
   gdouble             last_position;
 };
 
@@ -59,7 +58,7 @@ G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
 static void
 goto_page (PtWindow *self, int num)
 {
-  int n_pages = adw_carousel_get_n_pages (self->main_carousel);
+  int n_pages = adw_carousel_get_n_pages (ADW_CAROUSEL (self->main_carousel));
   GtkWidget *page;
 
   if (num < 0)
@@ -140,9 +139,12 @@ get_success_backdrop_opacity (GObject *object,
 {
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (box));
   PtWindow *self = PT_WINDOW (root);
-  AdwCarousel *carousel = self->main_carousel;
-  guint page_count = adw_carousel_get_n_pages (carousel);
+  guint page_count;
   gdouble opacity = 0.0;
+  AdwCarousel *carousel = self->main_carousel;
+
+  if (!carousel) return 0.0;
+  page_count = adw_carousel_get_n_pages (ADW_CAROUSEL (carousel));
 
   position += 1.0;
   if (position >= page_count - 1)
@@ -151,45 +153,14 @@ get_success_backdrop_opacity (GObject *object,
   return opacity;
 }
 
-static gboolean
-pt_disable_transition_style (PtWindow *self)
-{
-  GtkCssProvider *provider = self->theme_transition_provider;
-  gtk_css_provider_load_from_string (provider, "");
-
-  self->transition_disable_timeout = 0;
-
-  return G_SOURCE_REMOVE;
-}
-
-
-static void
-pt_enable_transition_style (PtWindow *self)
-{
-  GtkCssProvider *provider = self->theme_transition_provider;
-  static const char *transition_css =
-    "window {\n \
-      transition: background-color 0.2s ease-in, color 0.2s ease-in;\n \
-    }";
-
-  gtk_css_provider_load_from_string (provider, transition_css);
-
-  if (self->transition_disable_timeout)
-    g_source_remove (self->transition_disable_timeout);
-
-  self->transition_disable_timeout = g_timeout_add (250, (GSourceFunc) pt_disable_transition_style, self);
-}
-
 static void
 pt_set_dark_mode (GtkToggleButton *btn, gpointer user_data)
 {
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (btn));
   PtWindow *self = PT_WINDOW (root);
-  GtkSettings *settings = gtk_settings_get_default ();
 
-  self->wants_dark_mode = TRUE;
-  pt_enable_transition_style (self);
-  g_object_set (settings, "gtk-theme-name", "adw-gtk3-dark", NULL);
+  g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
+                       G_DESKTOP_COLOR_SCHEME_PREFER_DARK);
 }
 
 static void
@@ -197,11 +168,9 @@ pt_set_default_mode (GtkToggleButton *btn, gpointer user_data)
 {
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (btn));
   PtWindow *self = PT_WINDOW (root);
-  GtkSettings *settings = gtk_settings_get_default ();
 
-  self->wants_dark_mode = FALSE;
-  pt_enable_transition_style (self);
-  g_object_set (settings, "gtk-theme-name", "adw-gtk3", NULL);
+  g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
+                        G_DESKTOP_COLOR_SCHEME_DEFAULT);
 }
 
 static void
@@ -246,23 +215,6 @@ pt_commit_security_settings (PtPage *page, gpointer user_data)
 }
 
 static void
-pt_commit_theme_settings (PtPage *page, gpointer user_data)
-{
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
-  PtWindow *self = PT_WINDOW (root);
-
-  // We apply the color scheme here so that it doesn't interfere with the transition
-  g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
-                       self->wants_dark_mode
-                          ? G_DESKTOP_COLOR_SCHEME_PREFER_DARK
-                          : G_DESKTOP_COLOR_SCHEME_DEFAULT
-                      );
-
-  self->pending_commits--;
-  pt_check_should_exit (self);
-}
-
-static void
 pt_commit_language_settings (PtPage *page, gpointer user_data)
 {
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
@@ -281,7 +233,7 @@ pt_commit_all (PtPage *final_page)
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (final_page));
   PtWindow *self = PT_WINDOW (root);
   int i;
-  int n_pages = adw_carousel_get_n_pages (self->main_carousel);
+  int n_pages = adw_carousel_get_n_pages (ADW_CAROUSEL (self->main_carousel));
 
   self->pending_commits = 0;
 
@@ -407,7 +359,6 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_set_scaling);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_language_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
-  gtk_widget_class_bind_template_callback (widget_class, pt_commit_theme_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
   gtk_widget_class_bind_template_callback (widget_class, pt_update_begin);
 
