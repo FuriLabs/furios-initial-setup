@@ -240,6 +240,71 @@
                             <property name="valign">fill</property>
                           </object>
                         </property>
+
+                        <property name="subpage">
+                          <object class="PtPage">
+                            <property name="image-uri">resource:///io/furios/InitialSetup/pages/padlock.svg</property>
+                            <property name="summary" translatable="yes">Put your finger on it</property>
+                            <property name="explanation" translatable="yes">Select a finger and then repeatedly tap the power button to register your fingerprint</property>
+                            <property name="widget">
+                              <object class="AdwToastOverlay">
+                                <property name="name">toast_overlay</property>
+                                <child>
+                                  <object class="GtkScrolledWindow" id="enroll_step">
+                                    <property name="hscrollbar-policy">never</property>
+                                    <property name="min-content-height">400</property>
+                                    <property name="vexpand">true</property>
+                                    <property name="propagate-natural-height">true</property>
+                                    <child>
+                                      <object class="GtkBox">
+                                        <property name="orientation">vertical</property>
+                                        <property name="spacing">12</property>
+                                        <property name="margin-top">40</property>
+                                        <property name="margin-bottom">24</property>
+                                        <property name="margin-start">24</property>
+                                        <property name="margin-end">24</property>
+
+                                        <child>
+                                          <object class="GtkListBox">
+                                            <property name="name">finger_list</property>
+                                            <property name="selection-mode">none</property>
+                                            <property name="margin-top">8</property>
+                                            <style>
+                                              <class name="boxed-list"/>
+                                            </style>
+                                          </object>
+                                        </child>
+
+                                        <child>
+                                          <object class="GtkOverlay">
+                                            <property name="name">enroll_step</property>
+                                            <property name="halign">center</property>
+                                            <property name="visible">false</property>
+                                            <child>
+                                              <object class="GtkPicture">
+                                                <property name="file">resource:///io/furios/InitialSetup/pages/fingerprint-detection-symbolic.svg</property>
+                                                <property name="margin-bottom">24</property>
+                                              </object>
+                                            </child>
+                                            <child type="overlay">
+                                              <object class="GtkProgressBar">
+                                                <property name="name">enroll_progress</property>
+                                                <property name="valign">end</property>
+                                                <style>
+                                                  <class name="osd"/>
+                                                </style>
+                                              </object>
+                                            </child>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
                         <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>
                         <signal name="apply-changes" handler="pt_commit_security_settings" object="security-page" />
                       </object>
