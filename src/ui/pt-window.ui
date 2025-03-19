@@ -164,6 +164,14 @@
                                   </object>
                                 </child>
                                 <child>
+                                  <object class="GtkBox" id="accent_box">
+                                    <property name="spacing">12</property>
+                                    <property name="margin-top">12</property>
+                                    <property name="margin-bottom">12</property>
+                                    <property name="halign">center</property>
+                                  </object>
+                                </child>
+                                <child>
                                   <object class="GtkScale" id="scaling_slider">
                                     <property name="margin-start">12</property>
                                     <property name="margin-end">12</property>

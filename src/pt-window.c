@@ -26,6 +26,7 @@
 #include <gsettings-desktop-schemas/gdesktop-enums.h>
 #define INTERFACE_PATH_ID "org.gnome.desktop.interface"
 #define INTERFACE_COLOR_SCHEME_KEY "color-scheme"
+#define INTERFACE_ACCENT_COLOR_KEY "accent-color"
 
 static const char *SCREEN_SCALES[] = {"1", "1.25", "1.5", "1.75", "2", "2.25", "2.5", "2.75", "3"};
 static const int SCREEN_SCALES_COUNT = G_N_ELEMENTS (SCREEN_SCALES);
@@ -50,6 +51,8 @@ struct _PtWindow {
 
   GSettings           *interface_settings;
   gdouble             last_position;
+
+  GtkWidget           *accent_box;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -322,6 +325,112 @@ pt_window_get_property (GObject *object,
   }
 }
 
+/* Adapted from adw-inspector-page.c */
+static const char *
+get_color_tooltip (GDesktopAccentColor color)
+{
+  switch (color)
+    {
+    case G_DESKTOP_ACCENT_COLOR_BLUE:
+      return _("Blue");
+    case G_DESKTOP_ACCENT_COLOR_TEAL:
+      return _("Teal");
+    case G_DESKTOP_ACCENT_COLOR_GREEN:
+      return _("Green");
+    case G_DESKTOP_ACCENT_COLOR_YELLOW:
+      return _("Yellow");
+    case G_DESKTOP_ACCENT_COLOR_ORANGE:
+      return _("Orange");
+    case G_DESKTOP_ACCENT_COLOR_RED:
+      return _("Red");
+    case G_DESKTOP_ACCENT_COLOR_PINK:
+      return _("Pink");
+    case G_DESKTOP_ACCENT_COLOR_PURPLE:
+      return _("Purple");
+    case G_DESKTOP_ACCENT_COLOR_SLATE:
+      return _("Slate");
+    default:
+      g_assert_not_reached ();
+    }
+}
+
+static const char *
+get_untranslated_color (GDesktopAccentColor color)
+{
+  switch (color)
+    {
+    case G_DESKTOP_ACCENT_COLOR_BLUE:
+      return "blue";
+    case G_DESKTOP_ACCENT_COLOR_TEAL:
+      return "teal";
+    case G_DESKTOP_ACCENT_COLOR_GREEN:
+      return "green";
+    case G_DESKTOP_ACCENT_COLOR_YELLOW:
+      return "yellow";
+    case G_DESKTOP_ACCENT_COLOR_ORANGE:
+      return "orange";
+    case G_DESKTOP_ACCENT_COLOR_RED:
+      return "red";
+    case G_DESKTOP_ACCENT_COLOR_PINK:
+      return "pink";
+    case G_DESKTOP_ACCENT_COLOR_PURPLE:
+      return "purple";
+    case G_DESKTOP_ACCENT_COLOR_SLATE:
+      return "slate";
+    default:
+      g_assert_not_reached ();
+    }
+}
+
+static void
+on_accent_color_toggled_cb (PtWindow *self,
+                            GtkToggleButton   *toggle)
+{
+  GDesktopAccentColor accent_color_from_key;
+  GDesktopAccentColor accent_color = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (toggle), "accent-color"));
+
+  accent_color_from_key = g_settings_get_enum (self->interface_settings,
+                                               INTERFACE_ACCENT_COLOR_KEY);
+
+  /* Don't unnecessarily set the key again */
+  if (accent_color == accent_color_from_key)
+    return;
+
+  g_settings_set_enum (self->interface_settings,
+                       INTERFACE_ACCENT_COLOR_KEY,
+                       accent_color);
+}
+
+static void
+setup_accent_color_toggles (PtWindow *self)
+{
+  GDesktopAccentColor accent_color = g_settings_get_enum (self->interface_settings, INTERFACE_ACCENT_COLOR_KEY);
+  GDesktopAccentColor i;
+
+  for (i = G_DESKTOP_ACCENT_COLOR_BLUE; i <= G_DESKTOP_ACCENT_COLOR_SLATE; i++)
+    {
+      GtkWidget *button = GTK_WIDGET (gtk_toggle_button_new ());
+      GtkToggleButton *grouping_button = GTK_TOGGLE_BUTTON (gtk_widget_get_first_child (self->accent_box));
+
+      gtk_widget_set_tooltip_text (button, get_color_tooltip (i));
+      gtk_widget_add_css_class (button, "accent-button");
+      gtk_widget_add_css_class (button, get_untranslated_color (i));
+      g_object_set_data (G_OBJECT (button), "accent-color", GINT_TO_POINTER (i));
+      g_signal_connect_object (button, "toggled",
+                               G_CALLBACK (on_accent_color_toggled_cb),
+                               self,
+                               G_CONNECT_SWAPPED);
+
+      if (grouping_button != NULL)
+        gtk_toggle_button_set_group (GTK_TOGGLE_BUTTON (button), grouping_button);
+
+      if (i == accent_color)
+        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
+
+      gtk_box_append (GTK_BOX (self->accent_box), button);
+    }
+}
+
 static void
 pt_window_class_init (PtWindowClass *klass)
 {
@@ -348,6 +457,7 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_set_template_from_resource (widget_class,
                                                "/io/furios/InitialSetup/ui/pt-window.ui");
   gtk_widget_class_bind_template_child (widget_class, PtWindow, main_carousel);
+  gtk_widget_class_bind_template_child (widget_class, PtWindow, accent_box);
 
   gtk_widget_class_bind_template_callback (widget_class, get_btn_next_visible);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_visible);
@@ -388,4 +498,5 @@ pt_window_init (PtWindow *self)
                                          G_FILE_TEST_EXISTS);
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ANDROID_AUTOSTART]);
+  setup_accent_color_toggles (self);
 }
