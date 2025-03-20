@@ -3,3 +3,5 @@ usr/share/applications/io.furios.InitialSetup.desktop.xml
 usr/share/metainfo/io.furios.InitialSetup.appdata.xml
 usr/libexec/furios-initial-setup
 usr/lib/systemd/system/phosh.service.d/60-initial-setup.conf
+usr/libexec/furios-initial-setup-inner
+etc/xdg/autostart/furios-initial-setup.desktop

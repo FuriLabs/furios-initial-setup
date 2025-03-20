@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=FuriOS Initial Setup
+Exec=/usr/libexec/furios-initial-setup-inner
+Terminal=false
+Type=Application
+NoDisplay=true

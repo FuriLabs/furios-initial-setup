@@ -1,0 +1,6 @@
+#!/bin/sh
+
+[ -f "${HOME}/.config/furios-initial-setup-pending" ] || exit 0
+
+furios-initial-setup
+killall phoc  # ...hack

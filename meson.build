@@ -124,6 +124,8 @@ subdir('src')
 subdir('po')
 
 install_data('systemd/furios-initial-setup', install_dir: '/usr/libexec/')
+install_data('systemd/furios-initial-setup-inner', install_dir: '/usr/libexec/')
+install_data('systemd/furios-initial-setup.desktop', install_dir: '/etc/xdg/autostart/')
 install_data('systemd/60-initial-setup.conf', install_dir: '/usr/lib/systemd/system/phosh.service.d/')
 
 summary({
