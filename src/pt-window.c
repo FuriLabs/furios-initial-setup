@@ -265,6 +265,8 @@ static gboolean
 pt_set_scaling (GtkScale *scale)
 {
   int value = gtk_range_get_value (GTK_RANGE (scale));
+  g_autoptr (GSettings) display_settings = g_settings_new ("sm.puri.phosh.monitors");
+  g_autoptr (GVariantDict) display_config = g_variant_dict_new (NULL);
   const char *command;
 
   // Don't change the size from under the user
@@ -281,6 +283,11 @@ pt_set_scaling (GtkScale *scale)
   // This is not super nice
   command = g_strdup_printf ("wlr-randr --output HWCOMPOSER-1 --scale %s", SCREEN_SCALES[value]);
   g_spawn_command_line_async (command, NULL);
+  g_variant_dict_insert_value (display_config, "HWCOMPOSER-1",
+        g_variant_new_parsed ("{'x':<%i>, 'y':<%i>, 'scale':<%d>}",
+                              0, 0, atof(SCREEN_SCALES[value])));
+
+  g_settings_set_value (display_settings, "config", g_variant_dict_end (display_config));
 
   return G_SOURCE_REMOVE;
 }
