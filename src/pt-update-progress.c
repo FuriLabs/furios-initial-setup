@@ -475,6 +475,8 @@ set_ntp_cb (GObject *source_object,
   GVariant *ntp_value;
   gboolean ntp_active = FALSE;
 
+  g_usleep (500 * 1000);
+
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
     g_warning ("Failed to set NTP: %s", error->message);
