@@ -257,8 +257,8 @@ pt_update_progress_start_update_cache (PtUpdateProgress *self);
 
 static void
 provision_message_complete_cb (GObject *source,
-                              GAsyncResult *result,
-                              gpointer user_data)
+                               GAsyncResult *result,
+                               gpointer user_data)
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   SoupSession *session = SOUP_SESSION (source);
@@ -431,9 +431,10 @@ pt_update_progress_start_provision_check (PtUpdateProgress *self)
                           provision_message_complete_cb, self);
 }
 
-static void aptkit_update_cache_cb (GObject *source_object,
-                                   GAsyncResult *res,
-                                   gpointer user_data);
+static void
+aptkit_update_cache_cb (GObject *source_object,
+                        GAsyncResult *res,
+                        gpointer user_data);
 
 static void
 pt_update_progress_start_update_cache (PtUpdateProgress *self)
@@ -446,13 +447,13 @@ pt_update_progress_start_update_cache (PtUpdateProgress *self)
 
   if (priv->aptkit_proxy) {
     g_dbus_proxy_call (priv->aptkit_proxy,
-                      "UpdateCache",
-                      g_variant_new ("()"),
-                      G_DBUS_CALL_FLAGS_NONE,
-                      -1,
-                      NULL,
-                      aptkit_update_cache_cb,
-                      self);
+                       "UpdateCache",
+                       g_variant_new ("()"),
+                       G_DBUS_CALL_FLAGS_NONE,
+                       -1,
+                       NULL,
+                       aptkit_update_cache_cb,
+                       self);
   } else {
     g_warning ("Cannot check for updates, aptkit proxy not available");
     priv->had_error = TRUE;
@@ -465,8 +466,8 @@ pt_update_progress_start_update_cache (PtUpdateProgress *self)
 
 static void
 set_ntp_cb (GObject *source_object,
-           GAsyncResult *res,
-           gpointer user_data)
+            GAsyncResult *res,
+            gpointer user_data)
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
@@ -475,26 +476,28 @@ set_ntp_cb (GObject *source_object,
   GVariant *ntp_value;
   gboolean ntp_active = FALSE;
 
-  g_usleep (500 * 1000);
+  g_usleep (1000 * 1000);
 
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
     g_warning ("Failed to set NTP: %s", error->message);
     g_error_free (error);
 
-    if (priv->ntp_sync_attempts < 3) {
+    if (priv->ntp_sync_attempts < 10) {
       priv->ntp_sync_attempts++;
+      g_print ("Retrying NTP sync, attempt %d/10\n", priv->ntp_sync_attempts);
       g_dbus_proxy_call (priv->timedate_proxy,
-                        "SetNTP",
-                        g_variant_new ("(bb)", TRUE, TRUE),
-                        G_DBUS_CALL_FLAGS_NONE,
-                        -1,
-                        NULL,
-                        set_ntp_cb,
-                        self);
+                         "SetNTP",
+                         g_variant_new ("(bb)", TRUE, TRUE),
+                         G_DBUS_CALL_FLAGS_NONE,
+                         -1,
+                         NULL,
+                         set_ntp_cb,
+                         self);
       return;
     } else {
       priv->had_error = TRUE;
+      g_warning ("Giving up after 10 failed attempts to synchronize system clock");
       gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
       pt_update_progress_finish (self);
       return;
@@ -512,19 +515,21 @@ set_ntp_cb (GObject *source_object,
   if (ntp_active && pt_update_progress_check_valid_date (self)) {
     // NTP is active and date is valid, proceed with updates
     pt_update_progress_start_provision_check (self);
-  } else if (priv->ntp_sync_attempts < 3) {
+  } else if (priv->ntp_sync_attempts < 10) {
     priv->ntp_sync_attempts++;
+    g_print ("Retrying NTP sync, attempt %d/10\n", priv->ntp_sync_attempts);
     g_dbus_proxy_call (priv->timedate_proxy,
-                      "SetNTP",
-                      g_variant_new ("(bb)", TRUE, TRUE),
-                      G_DBUS_CALL_FLAGS_NONE,
-                      -1,
-                      NULL,
-                      set_ntp_cb,
-                      self);
+                       "SetNTP",
+                       g_variant_new ("(bb)", TRUE, TRUE),
+                       G_DBUS_CALL_FLAGS_NONE,
+                       -1,
+                       NULL,
+                       set_ntp_cb,
+                       self);
   } else if (!pt_update_progress_check_valid_date (self)) {
-    // NTP failed 3 times in a row AND our date still looks wrong... give up.
+    // NTP failed 10 times in a row AND our date still looks wrong... give up.
     priv->had_error = TRUE;
+    g_warning ("Giving up after 10 attempts - couldn't synchronize system clock and date is invalid");
     gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
     pt_update_progress_finish (self);
   }
@@ -556,13 +561,13 @@ timedate_proxy_setup_cb (GObject *source_object,
 
   gtk_label_set_label (priv->label, _("Synchronizing system clock…"));
   g_dbus_proxy_call (proxy,
-                    "SetNTP",
-                    g_variant_new ("(bb)", TRUE, TRUE),
-                    G_DBUS_CALL_FLAGS_NONE,
-                    -1,
-                    NULL,
-                    set_ntp_cb,
-                    self);
+                     "SetNTP",
+                     g_variant_new ("(bb)", TRUE, TRUE),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     NULL,
+                     set_ntp_cb,
+                     self);
 }
 
 static void
