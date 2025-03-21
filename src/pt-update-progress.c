@@ -70,6 +70,16 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
                               GVariant *parameters,
                               gpointer user_data);
 
+static void
+aptkit_update_cache_cb (GObject *source_object,
+                        GAsyncResult *res,
+                        gpointer user_data);
+
+static void
+set_ntp_cb (GObject *source_object,
+            GAsyncResult *res,
+            gpointer user_data);
+
 static gboolean
 pt_update_progress_check_valid_date (PtUpdateProgress *self)
 {
@@ -432,11 +442,6 @@ pt_update_progress_start_provision_check (PtUpdateProgress *self)
 }
 
 static void
-aptkit_update_cache_cb (GObject *source_object,
-                        GAsyncResult *res,
-                        gpointer user_data);
-
-static void
 pt_update_progress_start_update_cache (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
@@ -464,6 +469,24 @@ pt_update_progress_start_update_cache (PtUpdateProgress *self)
   }
 }
 
+static gboolean
+retry_ntp_sync (gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  g_dbus_proxy_call (priv->timedate_proxy,
+                     "SetNTP",
+                     g_variant_new ("(bb)", TRUE, TRUE),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     NULL,
+                     set_ntp_cb,
+                     self);
+
+  return G_SOURCE_REMOVE;
+}
+
 static void
 set_ntp_cb (GObject *source_object,
             GAsyncResult *res,
@@ -471,33 +494,27 @@ set_ntp_cb (GObject *source_object,
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  const guint MAX_NTP_ATTEMPTS = 15;
   GError *error = NULL;
   GVariant *result;
   GVariant *ntp_value;
   gboolean ntp_active = FALSE;
-
-  g_usleep (1000 * 1000);
 
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
     g_warning ("Failed to set NTP: %s", error->message);
     g_error_free (error);
 
-    if (priv->ntp_sync_attempts < 10) {
+    if (priv->ntp_sync_attempts < MAX_NTP_ATTEMPTS) {
       priv->ntp_sync_attempts++;
-      g_print ("Retrying NTP sync, attempt %d/10\n", priv->ntp_sync_attempts);
-      g_dbus_proxy_call (priv->timedate_proxy,
-                         "SetNTP",
-                         g_variant_new ("(bb)", TRUE, TRUE),
-                         G_DBUS_CALL_FLAGS_NONE,
-                         -1,
-                         NULL,
-                         set_ntp_cb,
-                         self);
+      g_print ("Retrying NTP sync, attempt %d/%d\n", priv->ntp_sync_attempts, MAX_NTP_ATTEMPTS);
+
+      // Schedule the next attempt after 3 seconds
+      g_timeout_add_seconds (3, retry_ntp_sync, self);
       return;
     } else {
       priv->had_error = TRUE;
-      g_warning ("Giving up after 10 failed attempts to synchronize system clock");
+      g_warning ("Giving up after %d failed attempts to synchronize system clock", MAX_NTP_ATTEMPTS);
       gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
       pt_update_progress_finish (self);
       return;
@@ -515,21 +532,16 @@ set_ntp_cb (GObject *source_object,
   if (ntp_active && pt_update_progress_check_valid_date (self)) {
     // NTP is active and date is valid, proceed with updates
     pt_update_progress_start_provision_check (self);
-  } else if (priv->ntp_sync_attempts < 10) {
+  } else if (priv->ntp_sync_attempts < MAX_NTP_ATTEMPTS) {
     priv->ntp_sync_attempts++;
-    g_print ("Retrying NTP sync, attempt %d/10\n", priv->ntp_sync_attempts);
-    g_dbus_proxy_call (priv->timedate_proxy,
-                       "SetNTP",
-                       g_variant_new ("(bb)", TRUE, TRUE),
-                       G_DBUS_CALL_FLAGS_NONE,
-                       -1,
-                       NULL,
-                       set_ntp_cb,
-                       self);
+    g_print ("Retrying NTP sync, attempt %d/%d\n", priv->ntp_sync_attempts, MAX_NTP_ATTEMPTS);
+
+    // Schedule the next attempt after 3 seconds
+    g_timeout_add_seconds (3, retry_ntp_sync, self);
   } else if (!pt_update_progress_check_valid_date (self)) {
-    // NTP failed 10 times in a row AND our date still looks wrong... give up.
+    // NTP failed MAX_NTP_ATTEMPTS times in a row AND our date still looks wrong... give up.
     priv->had_error = TRUE;
-    g_warning ("Giving up after 10 attempts - couldn't synchronize system clock and date is invalid");
+    g_warning ("Giving up after %d attempts - couldn't synchronize system clock and date is invalid", MAX_NTP_ATTEMPTS);
     gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
     pt_update_progress_finish (self);
   }
@@ -891,7 +903,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
                              -1,
                              NULL,
                              aptkit_upgrade_system_cb,
-                            self);
+                             self);
         } else if (priv->safe_mode && !priv->tried_safe_mode) {
           /* no updates in safe mode, try normal mode */
           g_debug ("No updates found in safe mode, trying without safe mode");
