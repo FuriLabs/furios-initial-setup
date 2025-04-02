@@ -255,7 +255,7 @@
 
                         <property name="subpage">
                           <object class="PtPage">
-                            <property name="image-uri">resource:///io/furios/InitialSetup/pages/padlock.svg</property>
+                            <property name="image-uri">resource:///io/furios/InitialSetup/pages/fingerprint.svg</property>
                             <property name="summary" translatable="yes">Put your finger on it</property>
                             <property name="explanation" translatable="yes">Select a finger and then repeatedly tap the power button to register your fingerprint</property>
                             <property name="widget">
