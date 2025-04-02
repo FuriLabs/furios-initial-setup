@@ -14,6 +14,7 @@ Build-Depends:
  libnm-dev (>= 1.24.0) [linux-any],
  libnma-gtk4-dev (>= 1.10.2) [linux-any],
  libsoup-3.0-dev,
+ biomd-dev,
  meson,
 Standards-Version: 4.7.0
 Homepage: https://github.com/FuriLabs/furios-initial-setup

@@ -15,10 +15,11 @@
 
 #include <adwaita.h>
 #include <glib/gi18n.h>
+#include <biomd/biomd_enums.h>
 
-#define FPD_DBUS_NAME         "org.droidian.fingerprint"
-#define FPD_DBUS_PATH         "/org/droidian/fingerprint"
-#define FPD_DBUS_INTERFACE    "org.droidian.fingerprint"
+#define BIOMD_DBUS_NAME          "io.FuriOS.Biomd"
+#define BIOMD_DBUS_FINGERPRINT_PATH   "/io/FuriOS/Biomd/Fingerprint"
+#define BIOMD_DBUS_FINGERPRINT_INTERFACE  "io.FuriOS.Biomd.Fingerprint"
 
 enum
 {
@@ -35,7 +36,8 @@ typedef struct _PtSecuritySettingsPrivate
   gboolean ready;
   ApplyCallback apply_cb;
   gpointer apply_user_data;
-  GDBusProxy *fpd_proxy;
+  GDBusProxy *fingerprint_proxy;
+  GDBusProxy *props_proxy;
   GtkWidget *fingerprint_group;
   AdwToastOverlay *toast_overlay;
   GtkListBox *finger_list;
@@ -82,6 +84,12 @@ auth_cb (PasswdHandler      *handler,
 static void
 pt_security_settings_finalize (GObject *object)
 {
+  PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+
+  g_clear_object (&priv->fingerprint_proxy);
+  g_clear_object (&priv->props_proxy);
+
   G_OBJECT_CLASS (pt_security_settings_parent_class)->finalize (object);
 }
 
@@ -147,17 +155,42 @@ update_password_match (PtSecuritySettings *self)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 }
 
+static void
+show_toast (AdwToastOverlay *toast_overlay, const char *format, ...)
+{
+  va_list args;
+  char *message;
+  AdwToast *toast;
+
+  va_start (args, format);
+  message = g_strdup_vprintf (format, args);
+  va_end (args);
+
+  toast = adw_toast_new (message);
+  adw_toast_set_timeout (toast, 3);
+
+  adw_toast_overlay_add_toast (toast_overlay, toast);
+
+  g_free (message);
+}
+
 static gchar **
-get_enrolled_fingers (GDBusProxy *fpd_proxy)
+get_enrolled_fingers (PtSecuritySettings *self)
 {
   GError *error = NULL;
   GVariant *result;
-  gchar **fpd_fingers = NULL;
+  gchar **enrolled_fingers = NULL;
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+
+  if (!priv->props_proxy) {
+    g_debug ("Properties proxy not available");
+    return NULL;
+  }
 
   result = g_dbus_proxy_call_sync(
-    fpd_proxy,
-    "GetAll",
-    NULL,
+    priv->props_proxy,
+    "Get",
+    g_variant_new ("(ss)", BIOMD_DBUS_FINGERPRINT_INTERFACE, "EnrolledFingers"),
     G_DBUS_CALL_FLAGS_NONE,
     -1,
     NULL,
@@ -165,18 +198,87 @@ get_enrolled_fingers (GDBusProxy *fpd_proxy)
   );
 
   if (error) {
-    g_debug ("Error calling GetAll: %s\n", error->message);
+    g_debug ("Error calling Get for EnrolledFingers: %s", error->message);
     g_clear_error (&error);
     return NULL;
   } else {
-    GVariant *fpd_list;
-    fpd_list = g_variant_get_child_value (result, 0);
-    fpd_fingers = g_variant_dup_strv (fpd_list, NULL);
-    g_variant_unref (fpd_list);
+    GVariant *enrolled_variant;
+    g_variant_get (result, "(v)", &enrolled_variant);
+    enrolled_fingers = g_variant_dup_strv (enrolled_variant, NULL);
+    g_variant_unref (enrolled_variant);
     g_variant_unref (result);
   }
 
-  return fpd_fingers;
+  return enrolled_fingers;
+}
+
+static gchar **
+get_valid_finger_names (PtSecuritySettings *self)
+{
+  GError *error = NULL;
+  GVariant *result;
+  gchar **valid_fingers = NULL;
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+
+  if (!priv->props_proxy) {
+    g_debug ("Properties proxy not available");
+    return NULL;
+  }
+
+  result = g_dbus_proxy_call_sync(
+    priv->props_proxy,
+    "Get",
+    g_variant_new ("(ss)", BIOMD_DBUS_FINGERPRINT_INTERFACE, "ValidFingerNames"),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    NULL,
+    &error
+  );
+
+  if (error) {
+    g_debug ("Error calling Get for ValidFingerNames: %s", error->message);
+    g_clear_error (&error);
+    return NULL;
+  } else {
+    GVariant *valid_variant;
+    g_variant_get (result, "(v)", &valid_variant);
+    valid_fingers = g_variant_dup_strv (valid_variant, NULL);
+    g_variant_unref (valid_variant);
+    g_variant_unref (result);
+  }
+
+  return valid_fingers;
+}
+
+static gboolean
+fingerprint_enroll (PtSecuritySettings *self, const gchar *finger_name, GError **error)
+{
+  GVariant *result;
+  gboolean success = FALSE;
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+
+  if (!priv->fingerprint_proxy) {
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_INITIALIZED,
+                 "Fingerprint proxy not available");
+    return FALSE;
+  }
+
+  result = g_dbus_proxy_call_sync(
+    priv->fingerprint_proxy,
+    "Enroll",
+    g_variant_new ("(s)", finger_name),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    NULL,
+    error
+  );
+
+  if (result) {
+    g_variant_get (result, "(b)", &success);
+    g_variant_unref (result);
+  }
+
+  return success;
 }
 
 static GtkWidget *
@@ -206,64 +308,42 @@ refresh_fingerprint_list (PtSecuritySettings *self)
 {
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
 
-  gchar *all_fingers[] = {
-    "right-index-finger",
-    "left-index-finger",
-    "right-thumb",
-    "right-middle-finger",
-    "right-ring-finger",
-    "right-little-finger",
-    "left-thumb",
-    "left-middle-finger",
-    "left-ring-finger",
-    "left-little-finger",
-    NULL
-  };
+  gchar **valid_finger_names = get_valid_finger_names (self);
+  gchar **enrolled_fingers = get_enrolled_fingers (self);
 
-  gchar **enrolled_fingers = get_enrolled_fingers (priv->fpd_proxy);
+  if (!valid_finger_names) {
+    g_debug ("Failed to get valid finger names");
+    if (enrolled_fingers)
+      g_strfreev (enrolled_fingers);
+    return;
+  }
 
   gtk_list_box_remove_all (priv->finger_list);
 
-  for (int i = 0; all_fingers[i] != NULL; i++) {
-    gboolean is_enrolled = g_strv_contains ((const gchar *const *) enrolled_fingers, all_fingers[i]);
+  for (int i = 0; valid_finger_names[i] != NULL; i++) {
+    gboolean is_enrolled = enrolled_fingers && g_strv_contains ((const gchar *const *) enrolled_fingers, valid_finger_names[i]);
     if (!is_enrolled) {
-      GtkWidget *row = create_finger_row (all_fingers[i]);
+      GtkWidget *row = create_finger_row (valid_finger_names[i]);
       gtk_list_box_append (priv->finger_list, row);
     }
   }
 
-  g_strfreev (enrolled_fingers);
-}
-
-static void
-show_toast (AdwToastOverlay *toast_overlay, const char *format, ...)
-{
-  va_list args;
-  char *message;
-  AdwToast *toast;
-
-  va_start (args, format);
-  message = g_strdup_vprintf (format, args);
-  va_end (args);
-
-  toast = adw_toast_new (message);
-  adw_toast_set_timeout (toast, 3);
-
-  adw_toast_overlay_add_toast (toast_overlay, toast);
-
-  g_free (message);
+  g_strfreev (valid_finger_names);
+  if (enrolled_fingers)
+    g_strfreev (enrolled_fingers);
 }
 
 static void
 handle_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVariant *parameters, gpointer user_data)
 {
   gint progress;
-  gchar *info;
   PtSecuritySettings *self = (PtSecuritySettings *) user_data;
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
   AdwToastOverlay *toast_overlay = priv->toast_overlay;
+  gint32 state_code, error_code, acquisition_code;
+  const gchar *state_str;
 
-  if (g_strcmp0 (signal_name, "EnrollProgressChanged") == 0) {
+  if (g_strcmp0 (signal_name, "EnrollmentProgressChanged") == 0) {
     g_variant_get (parameters, "(i)", &progress);
 
     gtk_progress_bar_set_fraction (priv->enroll_progress, progress / 100.0);
@@ -271,37 +351,93 @@ handle_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVaria
     if (progress == 100) {
       gtk_widget_activate_action (GTK_WIDGET (self), "win.flip-page", "i", 1);
     }
-  } else if (g_strcmp0 (signal_name, "ErrorInfo") == 0) {
-    g_variant_get (parameters, "(s)", &info);
-    g_debug ("%s received: %s", signal_name, info);
+  } else if (g_strcmp0 (signal_name, "EnrolledFingersChanged") == 0) {
+    g_debug ("EnrolledFingersChanged signal received");
+    refresh_fingerprint_list (self);
+  } else if (g_strcmp0 (signal_name, "StateChanged") == 0) {
+    g_variant_get (parameters, "(i)", &state_code);
 
-    if (g_strcmp0 (info, "ERROR_NO_SPACE") == 0)
-      show_toast (toast_overlay, "No space available for new fingerprints");
-    else if (g_strcmp0 (info, "ERROR_HW_UNAVAILABLE") == 0)
-      show_toast (toast_overlay, "Fingerprint hardware is unavailable");
-    else if (g_strcmp0 (info, "ERROR_UNABLE_TO_PROCESS") == 0)
-      show_toast (toast_overlay, "Unable to process fingerprint");
-    else if (g_strcmp0 (info, "ERROR_TIMEOUT") == 0 || g_strcmp0 (info, "ERROR_CANCELED") == 0)
-      show_toast (toast_overlay, "Fingerprint operation timed out");
+    switch ((BiometricState)state_code) {
+      case STATE_IDLE:
+        state_str = "IDLE";
+        break;
+      case STATE_ENROLLING:
+        state_str = "ENROLLING";
+        break;
+      case STATE_IDENTIFYING:
+        state_str = "IDENTIFYING";
+        break;
+      default:
+        state_str = "UNKNOWN";
+        break;
+    }
+
+    g_debug ("%s received: %s", signal_name, state_str);
+  } else if (g_strcmp0 (signal_name, "ErrorInfoChanged") == 0) {
+    g_variant_get (parameters, "(i)", &error_code);
+
+    switch ((BiometricError)error_code) {
+      case ERROR_NO_SPACE:
+        show_toast (toast_overlay, "No space available for new fingerprints");
+        break;
+      case ERROR_HW_UNAVAILABLE:
+        show_toast (toast_overlay, "Fingerprint hardware is unavailable");
+        break;
+      case ERROR_UNABLE_TO_PROCESS:
+        show_toast (toast_overlay, "Unable to process fingerprint");
+        break;
+      case ERROR_TIMEOUT:
+        show_toast (toast_overlay, "Fingerprint operation timed out");
+        break;
+      case ERROR_CANCELED:
+        show_toast (toast_overlay, "Fingerprint operation timed out");
+        break;
+      case ERROR_REMOVE:
+        show_toast (toast_overlay, "Unable to remove the fingerprint");
+        break;
+      case ERROR_LOCKOUT:
+        show_toast (toast_overlay, "Too many attempts, fingerprint sensor locked");
+        break;
+      case ERROR_GENERAL:
+        show_toast (toast_overlay, "An error occurred with the fingerprint reader");
+        break;
+      case ERROR_FINGER_NOT_RECOGNIZED:
+        g_debug ("Finger is not recognized");
+        break;
+      case ERROR_NONE:
+      default:
+        break;
+    }
 
     // Go back to the first screen so the user can select the finger again
-    gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
-    gtk_widget_set_visible (priv->enroll_step, FALSE);
-  } else if (g_strcmp0 (signal_name, "AcquisitionInfo") == 0) {
-    g_variant_get (parameters, "(s)", &info);
-    g_debug ("%s received: %s", signal_name, info);
-    if (g_strcmp0 (info, "FPACQUIRED_PARTIAL") == 0)
-      show_toast (toast_overlay, "Partial fingerprint detected. Please try again");
-    else if (g_strcmp0 (info, "FPACQUIRED_IMAGER_DIRTY") == 0)
-      show_toast (toast_overlay, "The sensor is dirty. Please clean and try again");
-    else if (g_strcmp0 (info, "FPACQUIRED_TOO_FAST") == 0)
-      show_toast (toast_overlay, "Finger moved too fast. Please try again");
-    else if (g_strcmp0 (info, "FPACQUIRED_TOO_SLOW") == 0)
-      show_toast (toast_overlay, "Finger moved too slow. Please try again");
-    else if (g_strcmp0 (info, "FPACQUIRED_INSUFFICIENT") == 0)
-      show_toast (toast_overlay, "Couldn't process fingerprint. Please try again");
+    if (error_code != ERROR_FINGER_NOT_RECOGNIZED && error_code != ERROR_NONE) {
+      gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
+      gtk_widget_set_visible (priv->enroll_step, FALSE);
+    }
+  } else if (g_strcmp0 (signal_name, "AcquisitionInfoChanged") == 0) {
+    g_variant_get (parameters, "(i)", &acquisition_code);
 
-    g_free (info);
+    switch ((BiometricAcquisition)acquisition_code) {
+      case ACQUISITION_PARTIAL:
+        show_toast (toast_overlay, "Partial fingerprint detected. Please try again");
+        break;
+      case ACQUISITION_IMAGER_DIRTY:
+        show_toast (toast_overlay, "The sensor is dirty. Please clean and try again");
+        break;
+      case ACQUISITION_TOO_FAST:
+        show_toast (toast_overlay, "Finger moved too fast. Please try again");
+        break;
+      case ACQUISITION_TOO_SLOW:
+        show_toast (toast_overlay, "Finger moved too slow. Please try again");
+        break;
+      case ACQUISITION_INSUFFICIENT:
+        show_toast (toast_overlay, "Couldn't process fingerprint. Please try again");
+        break;
+      case ACQUISITION_NONE:
+      case ACQUISITION_GOOD:
+      default:
+        break;
+    }
   }
 }
 
@@ -331,8 +467,8 @@ find_child_by_name (GtkWidget *widget, const gchar *name)
 static void
 on_finger_activated (GtkListBox *box, GtkListBoxRow *row, gpointer user_data)
 {
-  GVariant *result;
   GError *error = NULL;
+  gboolean success;
   PtSecuritySettings *self = (PtSecuritySettings *) user_data;
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
 
@@ -350,29 +486,74 @@ on_finger_activated (GtkListBox *box, GtkListBoxRow *row, gpointer user_data)
     gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), FALSE);
     gtk_widget_set_visible (priv->enroll_step, TRUE);
 
-    result = g_dbus_proxy_call_sync(
-      priv->fpd_proxy,
-      "Enroll",
-      g_variant_new ("(s)", finger_name),
-      G_DBUS_CALL_FLAGS_NONE,
-      -1,
-      NULL,
-      &error
-    );
+    success = fingerprint_enroll (self, finger_name, &error);
 
     if (error) {
       g_warning ("Error calling Enroll: %s\n", error->message);
       g_clear_error (&error);
-    }
 
-    g_variant_unref (result);
+      // Go back to finger selection if enrollment fails
+      gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
+      gtk_widget_set_visible (priv->enroll_step, FALSE);
+    } else if (!success) {
+      g_warning ("Failed to start enrollment");
+
+      // Go back to finger selection if enrollment fails
+      gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
+      gtk_widget_set_visible (priv->enroll_step, FALSE);
+    }
   }
+}
+
+static gboolean
+init_dbus_proxies (PtSecuritySettings *self)
+{
+  GError *error = NULL;
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+
+  priv->fingerprint_proxy = g_dbus_proxy_new_for_bus_sync(
+    G_BUS_TYPE_SYSTEM,
+    G_DBUS_PROXY_FLAGS_NONE,
+    NULL,
+    BIOMD_DBUS_NAME,
+    BIOMD_DBUS_FINGERPRINT_PATH,
+    BIOMD_DBUS_FINGERPRINT_INTERFACE,
+    NULL,
+    &error
+  );
+
+  if (error) {
+    g_warning ("Error creating fingerprint proxy: %s\n", error->message);
+    g_clear_error (&error);
+    return FALSE;
+  }
+
+  priv->props_proxy = g_dbus_proxy_new_for_bus_sync(
+    G_BUS_TYPE_SYSTEM,
+    G_DBUS_PROXY_FLAGS_NONE,
+    NULL,
+    BIOMD_DBUS_NAME,
+    BIOMD_DBUS_FINGERPRINT_PATH,
+    "org.freedesktop.DBus.Properties",
+    NULL,
+    &error
+  );
+
+  if (error) {
+    g_warning ("Error creating properties proxy: %s\n", error->message);
+    g_clear_error (&error);
+    g_clear_object (&priv->fingerprint_proxy);
+    return FALSE;
+  }
+
+  g_signal_connect (priv->fingerprint_proxy, "g-signal", G_CALLBACK (handle_signal), self);
+
+  return TRUE;
 }
 
 static void
 register_fingerprint (PtSecuritySettings *self)
 {
-  GError *error = NULL;
   // Still absolutely GHASTLY, GNARLY, AWFUL
   PtPage *parent_page = PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
@@ -384,22 +565,12 @@ register_fingerprint (PtSecuritySettings *self)
 
   g_signal_connect (priv->finger_list, "row-activated", G_CALLBACK (on_finger_activated), self);
 
-  priv->fpd_proxy = g_dbus_proxy_new_for_bus_sync(
-    G_BUS_TYPE_SYSTEM,
-    G_DBUS_PROXY_FLAGS_NONE,
-    NULL,
-    FPD_DBUS_NAME,
-    FPD_DBUS_PATH,
-    FPD_DBUS_INTERFACE,
-    NULL,
-    &error
-  );
-
-  g_signal_connect (priv->fpd_proxy, "g-signal", G_CALLBACK (handle_signal), self);
-
-  refresh_fingerprint_list (self);
-
-  pt_page_switch_to_subpage (parent_page);
+  if (init_dbus_proxies (self)) {
+    refresh_fingerprint_list (self);
+    pt_page_switch_to_subpage (parent_page);
+  } else {
+    g_warning ("Failed to initialize DBus proxies for biomd");
+  }
 }
 
 static void
@@ -474,19 +645,20 @@ pt_security_settings_class_init (PtSecuritySettingsClass *klass)
 }
 
 static gboolean
-ping_fpd (void)
+ping_biomd (void)
 {
   GDBusProxy *proxy;
   GError *error = NULL;
   GVariant *result;
+  gboolean ping_result = FALSE;
 
   proxy = g_dbus_proxy_new_for_bus_sync(
     G_BUS_TYPE_SYSTEM,
     G_DBUS_PROXY_FLAGS_NONE,
     NULL,
-    FPD_DBUS_NAME,
-    FPD_DBUS_PATH,
-    "org.freedesktop.DBus.Peer",
+    BIOMD_DBUS_NAME,
+    "/io/FuriOS/Biomd",
+    "io.FuriOS.Biomd",
     NULL,
     &error
   );
@@ -507,16 +679,17 @@ ping_fpd (void)
     &error
   );
 
-  g_object_unref (proxy);
-
   if (error) {
     g_warning ("Error calling Ping: %s\n", error->message);
     g_clear_error (&error);
-    return FALSE;
+  } else {
+    g_variant_get (result, "(b)", &ping_result);
+    g_variant_unref (result);
   }
 
-  g_variant_unref (result);
-  return TRUE;
+  g_object_unref (proxy);
+
+  return ping_result;
 }
 
 static void
@@ -525,7 +698,7 @@ pt_security_settings_init (PtSecuritySettings *self)
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  gtk_widget_set_visible (priv->fingerprint_group, ping_fpd());
+  gtk_widget_set_visible (priv->fingerprint_group, ping_biomd());
 }
 
 PtSecuritySettings *
