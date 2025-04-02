@@ -2,6 +2,7 @@ Source: furios-initial-setup
 Section: x11
 Priority: optional
 Maintainer: Furi Labs developers <dev@furilabs.com>
+XS-FuriOS-Force-Staging: true
 Build-Depends:
  appstream,
  debhelper-compat (= 13),
