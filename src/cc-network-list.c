@@ -1,6 +1,6 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *
+/*
  * Copyright (C) 2013 Red Hat
+ * Copyright (C) 2025 Furi Labs
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -18,6 +18,7 @@
  * Written by:
  *     Jasper St. Pierre <jstpierre@mecheye.net>
  *     Matthias Clasen <mclasen@redhat.com>
+ *     Bardia Moshiri <bardia@furilabs.com>
  */
 
 #include "furios-initial-setup-config.h"
@@ -27,7 +28,6 @@
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <NetworkManager.h>
-
 
 enum
 {
@@ -62,7 +62,6 @@ struct _CcNetworkListPrivate
 
 typedef struct _CcNetworkListPrivate CcNetworkListPrivate;
 G_DEFINE_TYPE_WITH_PRIVATE (CcNetworkList, cc_network_list, ADW_TYPE_BIN);
-
 
 static GPtrArray *
 get_strongest_unique_aps (const GPtrArray *aps)
@@ -99,7 +98,7 @@ get_strongest_unique_aps (const GPtrArray *aps)
       /* is this the same type and data? */
       if (ssid_tmp &&
           nm_utils_same_ssid (g_bytes_get_data (ssid, NULL), g_bytes_get_size (ssid),
-            g_bytes_get_data (ssid_tmp, NULL), g_bytes_get_size (ssid_tmp), TRUE)) {
+                              g_bytes_get_data (ssid_tmp, NULL), g_bytes_get_size (ssid_tmp), TRUE)) {
         /* the new access point is stronger */
         if (nm_access_point_get_strength (ap) >
             nm_access_point_get_strength (ap_tmp)) {
@@ -111,9 +110,8 @@ get_strongest_unique_aps (const GPtrArray *aps)
         break;
       }
     }
-    if (add_ap) {
+    if (add_ap)
       g_ptr_array_add (unique, g_object_ref (ap));
-    }
   }
 
 out:
@@ -133,8 +131,10 @@ ap_sort (GtkListBoxRow *a,
 
   sa = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (wa), "strength"));
   sb = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (wb), "strength"));
-  if (sa > sb) return -1;
-  if (sb > sa) return 1;
+  if (sa > sb)
+    return -1;
+  if (sb > sa)
+    return 1;
 
   return 0;
 }
@@ -251,17 +251,14 @@ add_access_point (CcNetworkList *self, NMAccessPoint *ap, NMAccessPoint *active)
   if (activating || activated)
     strength = G_MAXUINT;
 
-  if (activated)
-  {
+  if (activated) {
     g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/connected-good.svg", NULL);
     cancel_periodic_refresh (self);
 
-    // GHASTLY
+    /* GHASTLY */
     parent_page = PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
     pt_page_switch_to_subpage (parent_page);
-  }
-  else if (activating)
-  {
+  } else if (activating) {
     g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/connected-ok.svg", NULL);
   }
 
@@ -326,9 +323,9 @@ refresh_wireless_list (CcNetworkList *self)
   if (ok && (out.x < 0 || out.x > gtk_widget_get_width (window) ||
       out.y < 0 || out.y > gtk_widget_get_height (window)) &&
       gtk_widget_get_first_child (priv->network_list) != NULL) {
-        // Looks like we're out of bounds and we already have something in the list. Don't waste cycles.
-        g_debug ("Skipping Wi-Fi networks list refresh, widget is out of bounds");
-        goto out;
+    /* Looks like we're out of bounds and we already have something in the list. Don't waste cycles. */
+    g_debug ("Skipping Wi-Fi networks list refresh, widget is out of bounds");
+    goto out;
   }
 
   g_debug ("Refreshing Wi-Fi networks list");
@@ -369,7 +366,6 @@ out:
   return G_SOURCE_REMOVE;
 }
 
-
 static void
 connection_activate_cb (GObject *object,
                         GAsyncResult *result,
@@ -382,12 +378,11 @@ connection_activate_cb (GObject *object,
   refresh_wireless_list (CC_NETWORK_LIST (user_data));
 
   connection = nm_client_activate_connection_finish (client, result, &error);
-  if (connection != NULL) {
+  if (connection != NULL)
     g_clear_object (&connection);
-  } else {
+  else
     /* failed to activate */
     g_warning ("Failed to activate a connection: %s", error->message);
-  }
 }
 
 static void
@@ -400,14 +395,12 @@ connection_add_activate_cb (GObject *object,
   g_autoptr (GError) error = NULL;
 
   connection = nm_client_add_and_activate_connection_finish (client, result, &error);
-  if (connection != NULL) {
+  if (connection != NULL)
     g_clear_object (&connection);
-  } else {
+  else
     /* failed to activate */
     g_warning ("Failed to add and activate a connection: %s", error->message);
-  }
 }
-
 
 static void
 row_activated (GtkListBox *box,
@@ -532,11 +525,19 @@ find_best_device (CcNetworkList *self)
   g_return_if_fail (devices != NULL);
   for (i = 0; i < devices->len; i++) {
     NMDevice *device = g_ptr_array_index (devices, i);
+    const char *iface_name;
 
     if (!nm_device_get_managed (device))
       continue;
 
     if (nm_device_get_device_type (device) == NM_DEVICE_TYPE_WIFI) {
+      /* Get the interface name and check if it starts with "ap" or "p2p" */
+      iface_name = nm_device_get_iface (device);
+      if (iface_name && (g_str_has_prefix (iface_name, "ap") || g_str_has_prefix (iface_name, "p2p"))) {
+        g_debug ("Skipping WiFi interface %s (AP or P2P interface)", iface_name);
+        continue;
+      }
+
       /* FIXME deal with multiple, dynamic devices */
       priv->nm_device = g_object_ref (device);
       g_debug ("Showing network device %s",
@@ -597,7 +598,6 @@ cc_network_list_finalize (GObject *object)
   G_OBJECT_CLASS (cc_network_list_parent_class)->finalize (object);
 }
 
-
 static void
 cc_network_list_get_property (GObject *object,
                               guint prop_id,
@@ -616,7 +616,6 @@ cc_network_list_get_property (GObject *object,
     break;
   }
 }
-
 
 static void
 cc_network_list_set_property (GObject *object,
@@ -637,7 +636,6 @@ cc_network_list_set_property (GObject *object,
     break;
   }
 }
-
 
 static void
 cc_network_list_class_init (CcNetworkListClass *klass)
@@ -668,7 +666,6 @@ cc_network_list_init (CcNetworkList *list)
 {
   gtk_widget_init_template (GTK_WIDGET (list));
 }
-
 
 const char *
 cc_network_list_get_signal_indicator_picture (CcNetworkList *self)
