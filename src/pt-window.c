@@ -57,7 +57,6 @@ struct _PtWindow {
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
 
-
 static void
 goto_page (PtWindow *self, int num)
 {
@@ -74,7 +73,6 @@ goto_page (PtWindow *self, int num)
   adw_carousel_scroll_to (self->main_carousel, page, TRUE);
 }
 
-
 static void
 on_flip_page_activated (GtkWidget *widget, const char *action_name, GVariant *param)
 {
@@ -86,7 +84,6 @@ on_flip_page_activated (GtkWidget *widget, const char *action_name, GVariant *pa
   goto_page (self, num + offset);
 }
 
-
 static gboolean
 get_btn_next_visible (GObject *object, double position, int n_pages)
 {
@@ -95,7 +92,6 @@ get_btn_next_visible (GObject *object, double position, int n_pages)
 
   return TRUE;
 }
-
 
 static gboolean
 get_btn_previous_visible (GObject *object, double position)
@@ -106,7 +102,6 @@ get_btn_previous_visible (GObject *object, double position)
   return TRUE;
 }
 
-
 static gboolean
 get_btn_next_sensitive (GObject *object, AdwCarousel *carousel, double position)
 {
@@ -115,14 +110,13 @@ get_btn_next_sensitive (GObject *object, AdwCarousel *carousel, double position)
   return pt_page_get_can_proceed (page);
 }
 
-
 static gboolean
 get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double position)
 {
-  // HACK: this method gets called whenever the user starts swiping anywhere
-  // This is DEFINITELY NOT THE RIGHT PLACE TO DO THIS, but we want to ensure
-  // that we unfocus any text entry or any other crap like that. So I'm just gonna
-  // do it here
+  /* HACK: this method gets called whenever the user starts swiping anywhere
+   * This is DEFINITELY NOT THE RIGHT PLACE TO DO THIS, but we want to ensure
+   * that we unfocus any text entry or any other crap like that. So I'm just gonna
+   * do it here */
   GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (carousel));
   PtWindow *self = PT_WINDOW (root);
 
@@ -133,7 +127,6 @@ get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double posit
 
   return TRUE;
 }
-
 
 static gdouble
 get_success_backdrop_opacity (GObject *object,
@@ -146,7 +139,9 @@ get_success_backdrop_opacity (GObject *object,
   gdouble opacity = 0.0;
   AdwCarousel *carousel = self->main_carousel;
 
-  if (!carousel) return 0.0;
+  if (!carousel)
+    return 0.0;
+
   page_count = adw_carousel_get_n_pages (ADW_CAROUSEL (carousel));
 
   position += 1.0;
@@ -173,7 +168,7 @@ pt_set_default_mode (GtkToggleButton *btn, gpointer user_data)
   PtWindow *self = PT_WINDOW (root);
 
   g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
-                        G_DESKTOP_COLOR_SCHEME_DEFAULT);
+                       G_DESKTOP_COLOR_SCHEME_DEFAULT);
 }
 
 static void
@@ -240,14 +235,14 @@ pt_commit_all (PtPage *final_page)
 
   self->pending_commits = 0;
 
-  // First we check how many commits we need to do
+  /* First we check how many commits we need to do */
   for (i = 0; i < n_pages; i++) {
     PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
     if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL))
       self->pending_commits++;
   }
 
-  // And now we truly commit
+  /* And now we truly commit */
   for (i = 0; i < n_pages; i++) {
     PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
     if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL))
@@ -269,7 +264,7 @@ pt_set_scaling (GtkScale *scale)
   g_autoptr (GVariantDict) display_config = g_variant_dict_new (NULL);
   const char *command;
 
-  // Don't change the size from under the user
+  /* Don't change the size from under the user */
   if (gtk_widget_get_state_flags (GTK_WIDGET (scale)) & GTK_STATE_FLAG_ACTIVE) {
     g_timeout_add (100, (GSourceFunc) pt_set_scaling, scale);
     return G_SOURCE_REMOVE;
@@ -280,12 +275,12 @@ pt_set_scaling (GtkScale *scale)
     return G_SOURCE_REMOVE;
   }
 
-  // This is not super nice
+  /* This is not super nice */
   command = g_strdup_printf ("wlr-randr --output HWCOMPOSER-1 --scale %s", SCREEN_SCALES[value]);
   g_spawn_command_line_async (command, NULL);
   g_variant_dict_insert_value (display_config, "HWCOMPOSER-1",
-        g_variant_new_parsed ("{'x':<%i>, 'y':<%i>, 'scale':<%d>}",
-                              0, 0, atof(SCREEN_SCALES[value])));
+                               g_variant_new_parsed ("{'x':<%i>, 'y':<%i>, 'scale':<%d>}",
+                                                     0, 0, atof(SCREEN_SCALES[value])));
 
   g_settings_set_value (display_settings, "config", g_variant_dict_end (display_config));
 
@@ -336,57 +331,55 @@ pt_window_get_property (GObject *object,
 static const char *
 get_color_tooltip (GDesktopAccentColor color)
 {
-  switch (color)
-    {
-    case G_DESKTOP_ACCENT_COLOR_BLUE:
-      return _("Blue");
-    case G_DESKTOP_ACCENT_COLOR_TEAL:
-      return _("Teal");
-    case G_DESKTOP_ACCENT_COLOR_GREEN:
-      return _("Green");
-    case G_DESKTOP_ACCENT_COLOR_YELLOW:
-      return _("Yellow");
-    case G_DESKTOP_ACCENT_COLOR_ORANGE:
-      return _("Orange");
-    case G_DESKTOP_ACCENT_COLOR_RED:
-      return _("Red");
-    case G_DESKTOP_ACCENT_COLOR_PINK:
-      return _("Pink");
-    case G_DESKTOP_ACCENT_COLOR_PURPLE:
-      return _("Purple");
-    case G_DESKTOP_ACCENT_COLOR_SLATE:
-      return _("Slate");
-    default:
-      g_assert_not_reached ();
-    }
+  switch (color) {
+  case G_DESKTOP_ACCENT_COLOR_BLUE:
+    return _("Blue");
+  case G_DESKTOP_ACCENT_COLOR_TEAL:
+    return _("Teal");
+  case G_DESKTOP_ACCENT_COLOR_GREEN:
+    return _("Green");
+  case G_DESKTOP_ACCENT_COLOR_YELLOW:
+    return _("Yellow");
+  case G_DESKTOP_ACCENT_COLOR_ORANGE:
+    return _("Orange");
+  case G_DESKTOP_ACCENT_COLOR_RED:
+    return _("Red");
+  case G_DESKTOP_ACCENT_COLOR_PINK:
+    return _("Pink");
+  case G_DESKTOP_ACCENT_COLOR_PURPLE:
+    return _("Purple");
+  case G_DESKTOP_ACCENT_COLOR_SLATE:
+    return _("Slate");
+  default:
+    g_assert_not_reached ();
+  }
 }
 
 static const char *
 get_untranslated_color (GDesktopAccentColor color)
 {
-  switch (color)
-    {
-    case G_DESKTOP_ACCENT_COLOR_BLUE:
-      return "blue";
-    case G_DESKTOP_ACCENT_COLOR_TEAL:
-      return "teal";
-    case G_DESKTOP_ACCENT_COLOR_GREEN:
-      return "green";
-    case G_DESKTOP_ACCENT_COLOR_YELLOW:
-      return "yellow";
-    case G_DESKTOP_ACCENT_COLOR_ORANGE:
-      return "orange";
-    case G_DESKTOP_ACCENT_COLOR_RED:
-      return "red";
-    case G_DESKTOP_ACCENT_COLOR_PINK:
-      return "pink";
-    case G_DESKTOP_ACCENT_COLOR_PURPLE:
-      return "purple";
-    case G_DESKTOP_ACCENT_COLOR_SLATE:
-      return "slate";
-    default:
-      g_assert_not_reached ();
-    }
+  switch (color) {
+  case G_DESKTOP_ACCENT_COLOR_BLUE:
+    return "blue";
+  case G_DESKTOP_ACCENT_COLOR_TEAL:
+    return "teal";
+  case G_DESKTOP_ACCENT_COLOR_GREEN:
+    return "green";
+  case G_DESKTOP_ACCENT_COLOR_YELLOW:
+    return "yellow";
+  case G_DESKTOP_ACCENT_COLOR_ORANGE:
+    return "orange";
+  case G_DESKTOP_ACCENT_COLOR_RED:
+    return "red";
+  case G_DESKTOP_ACCENT_COLOR_PINK:
+    return "pink";
+  case G_DESKTOP_ACCENT_COLOR_PURPLE:
+    return "purple";
+  case G_DESKTOP_ACCENT_COLOR_SLATE:
+    return "slate";
+  default:
+    g_assert_not_reached ();
+  }
 }
 
 static void
@@ -414,28 +407,27 @@ setup_accent_color_toggles (PtWindow *self)
   GDesktopAccentColor accent_color = g_settings_get_enum (self->interface_settings, INTERFACE_ACCENT_COLOR_KEY);
   GDesktopAccentColor i;
 
-  for (i = G_DESKTOP_ACCENT_COLOR_BLUE; i <= G_DESKTOP_ACCENT_COLOR_SLATE; i++)
-    {
-      GtkWidget *button = GTK_WIDGET (gtk_toggle_button_new ());
-      GtkToggleButton *grouping_button = GTK_TOGGLE_BUTTON (gtk_widget_get_first_child (self->accent_box));
+  for (i = G_DESKTOP_ACCENT_COLOR_BLUE; i <= G_DESKTOP_ACCENT_COLOR_SLATE; i++) {
+    GtkWidget *button = GTK_WIDGET (gtk_toggle_button_new ());
+    GtkToggleButton *grouping_button = GTK_TOGGLE_BUTTON (gtk_widget_get_first_child (self->accent_box));
 
-      gtk_widget_set_tooltip_text (button, get_color_tooltip (i));
-      gtk_widget_add_css_class (button, "accent-button");
-      gtk_widget_add_css_class (button, get_untranslated_color (i));
-      g_object_set_data (G_OBJECT (button), "accent-color", GINT_TO_POINTER (i));
-      g_signal_connect_object (button, "toggled",
-                               G_CALLBACK (on_accent_color_toggled_cb),
-                               self,
-                               G_CONNECT_SWAPPED);
+    gtk_widget_set_tooltip_text (button, get_color_tooltip (i));
+    gtk_widget_add_css_class (button, "accent-button");
+    gtk_widget_add_css_class (button, get_untranslated_color (i));
+    g_object_set_data (G_OBJECT (button), "accent-color", GINT_TO_POINTER (i));
+    g_signal_connect_object (button, "toggled",
+                             G_CALLBACK (on_accent_color_toggled_cb),
+                             self,
+                             G_CONNECT_SWAPPED);
 
-      if (grouping_button != NULL)
-        gtk_toggle_button_set_group (GTK_TOGGLE_BUTTON (button), grouping_button);
+    if (grouping_button != NULL)
+      gtk_toggle_button_set_group (GTK_TOGGLE_BUTTON (button), grouping_button);
 
-      if (i == accent_color)
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
+    if (i == accent_color)
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
 
-      gtk_box_append (GTK_BOX (self->accent_box), button);
-    }
+    gtk_box_append (GTK_BOX (self->accent_box), button);
+  }
 }
 
 static void

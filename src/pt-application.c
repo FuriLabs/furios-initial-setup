@@ -25,8 +25,6 @@ struct _PtApplication {
 
 G_DEFINE_TYPE (PtApplication, pt_application, ADW_TYPE_APPLICATION)
 
-
-
 PtApplication *
 pt_application_new (char *application_id, GApplicationFlags flags)
 {
@@ -36,7 +34,6 @@ pt_application_new (char *application_id, GApplicationFlags flags)
                        NULL);
 }
 
-
 static void
 pt_application_activate (GApplication *app)
 {
@@ -45,9 +42,9 @@ pt_application_activate (GApplication *app)
   g_assert (GTK_IS_APPLICATION (app));
 
   cc_common_language_set_current_language (setlocale (LC_MESSAGES, NULL));
-  // Reset back to the C locale. We do this so that the UI is loaded with its
-  // original language, so we can stash away the original string and dynamically
-  // translate it later.
+  /* Reset back to the C locale. We do this so that the UI is loaded with its
+   * original language, so we can stash away the original string and dynamically
+   * translate it later. */
   setlocale (LC_MESSAGES, "C");
 
   window = gtk_application_get_active_window (GTK_APPLICATION (app));
@@ -56,7 +53,6 @@ pt_application_activate (GApplication *app)
 
   gtk_window_present (window);
 }
-
 
 static int
 pt_application_handle_local_options (GApplication *app, GVariantDict *options)
@@ -70,7 +66,6 @@ pt_application_handle_local_options (GApplication *app, GVariantDict *options)
   return G_APPLICATION_CLASS (pt_application_parent_class)->handle_local_options (app, options);
 }
 
-
 static void
 pt_application_class_init (PtApplicationClass *klass)
 {
@@ -79,7 +74,6 @@ pt_application_class_init (PtApplicationClass *klass)
   app_class->activate = pt_application_activate;
   app_class->handle_local_options = pt_application_handle_local_options;
 }
-
 
 static void
 pt_application_init (PtApplication *self)

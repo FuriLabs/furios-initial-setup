@@ -1,5 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *
+/*
  * Copyright (C) 2013 Red Hat
  *
  * This program is free software; you can redistribute it and/or
@@ -30,7 +29,6 @@ G_BEGIN_DECLS
 #define CC_TYPE_LANGUAGE_CHOOSER            (cc_language_chooser_get_type ())
 
 G_DECLARE_FINAL_TYPE (CcLanguageChooser, cc_language_chooser, CC, LANGUAGE_CHOOSER, GtkBox)
-
 
 const gchar * cc_language_chooser_get_language (CcLanguageChooser *chooser);
 void          cc_language_chooser_set_language (CcLanguageChooser *chooser,

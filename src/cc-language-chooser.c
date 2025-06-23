@@ -1,5 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
- *
+/*
  * Copyright (C) 2013 Red Hat
  *
  * This program is free software; you can redistribute it and/or
@@ -168,7 +167,7 @@ language_widget_new (const char *locale_id,
   gtk_widget_set_margin_end (widget->box, 12);
   gtk_widget_set_halign (widget->box, GTK_ALIGN_FILL);
 
-  // Make it unfocusable so the gray background doesn't show up
+  /* Make it unfocusable so the gray background doesn't show up */
   gtk_widget_set_can_focus (widget->box, FALSE);
 
   label = gtk_label_new (language_name);
@@ -238,9 +237,8 @@ language_widget_update (LanguageWidget *widget)
 
   if (country_name) {
     label = gtk_widget_get_last_child (widget->box);
-    if (GTK_IS_LABEL (label)) {
+    if (GTK_IS_LABEL (label))
       gtk_label_set_text (GTK_LABEL (label), country_name);
-    }
   }
 
   g_free (language);
@@ -315,9 +313,8 @@ add_one_language (CcLanguageChooser *chooser,
   CcLanguageChooserPrivate *priv = cc_language_chooser_get_instance_private (chooser);
   GtkWidget *widget;
 
-  if (!cc_common_language_has_font (locale_id)) {
+  if (!cc_common_language_has_font (locale_id))
     return;
-  }
 
   widget = language_widget_new (locale_id, !is_initial);
   if (widget)
@@ -374,7 +371,7 @@ language_visible (GtkListBoxRow *row,
 
   child = gtk_list_box_row_get_child (row);
   if (child == priv->more_item)
-    return TRUE; // don't hide the More item so scroll doesn't go to the bottom
+    return TRUE; /* don't hide the More item so scroll doesn't go to the bottom */
 
   widget = get_language_widget (child);
 
@@ -414,7 +411,6 @@ sort_languages (GtkListBoxRow *a,
   return g_strcmp0 (la->locale_id, lb->locale_id);
 }
 
-
 static void
 show_more (CcLanguageChooser *chooser)
 {
@@ -449,7 +445,7 @@ walk_all_widgets_recursive (GtkWidget *widget)
 {
   GtkWidget *next_child = gtk_widget_get_first_child (widget);
 
-  // Prerender everything on language change too
+  /* Prerender everything on language change too */
   gtk_widget_queue_draw (widget);
 
   if (GTK_IS_LABEL (widget)) {
@@ -459,13 +455,13 @@ walk_all_widgets_recursive (GtkWidget *widget)
       original_text = g_object_get_data (G_OBJECT (widget), "original-text");
     }
 
-    // Don't translate the empty string
+    /* Don't translate the empty string */
     if (g_strcmp0 (original_text, "") == 0)
       return;
 
-    // TODO: this does not work with string substitutions
-    // g_print ("Original text: %s\n", original_text);
-    // g_print ("Translated text: %s\n", _(original_text));
+    /* TODO: this does not work with string substitutions
+     * g_print ("Original text: %s\n", original_text);
+     * g_print ("Translated text: %s\n", _(original_text)); */
     gtk_label_set_text (GTK_LABEL (widget), _(original_text));
   }
 

@@ -55,48 +55,42 @@ cc_util_normalize_casefold_and_unaccent (const char *str)
 
   ilen = strlen (tmp);
 
-  while (i < ilen)
-    {
-      gunichar unichar;
-      gchar *next_utf8;
-      gint utf8_len;
+  while (i < ilen) {
+    gunichar unichar;
+    gchar *next_utf8;
+    gint utf8_len;
 
-      /* Get next character of the word as UCS4 */
-      unichar = g_utf8_get_char_validated (&tmp[i], -1);
+    /* Get next character of the word as UCS4 */
+    unichar = g_utf8_get_char_validated (&tmp[i], -1);
 
-      /* Invalid UTF-8 character or end of original string. */
-      if (unichar == (gunichar) -1 ||
-          unichar == (gunichar) -2)
-        {
-          break;
-        }
+    /* Invalid UTF-8 character or end of original string. */
+    if (unichar == (gunichar) -1 ||
+        unichar == (gunichar) -2)
+      break;
 
-      /* Find next UTF-8 character */
-      next_utf8 = g_utf8_next_char (&tmp[i]);
-      utf8_len = next_utf8 - &tmp[i];
+    /* Find next UTF-8 character */
+    next_utf8 = g_utf8_next_char (&tmp[i]);
+    utf8_len = next_utf8 - &tmp[i];
 
-      if (IS_CDM_UCS4 ((guint32) unichar))
-        {
-          /* If the given unichar is a combining diacritical mark,
-           * just update the original index, not the output one */
-          i += utf8_len;
-          continue;
-        }
-
-      /* If already found a previous combining
-       * diacritical mark, indexes are different so
-       * need to copy characters. As output and input
-       * buffers may overlap, need to use memmove
-       * instead of memcpy */
-      if (i != j)
-        {
-          memmove (&tmp[j], &tmp[i], utf8_len);
-        }
-
-      /* Update both indexes */
+    if (IS_CDM_UCS4 ((guint32) unichar)) {
+      /* If the given unichar is a combining diacritical mark,
+       * just update the original index, not the output one */
       i += utf8_len;
-      j += utf8_len;
+      continue;
     }
+
+    /* If already found a previous combining
+     * diacritical mark, indexes are different so
+     * need to copy characters. As output and input
+     * buffers may overlap, need to use memmove
+     * instead of memcpy */
+    if (i != j)
+      memmove (&tmp[j], &tmp[i], utf8_len);
+
+    /* Update both indexes */
+    i += utf8_len;
+    j += utf8_len;
+  }
 
   /* Force proper string end */
   tmp[j] = '\0';

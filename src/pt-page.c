@@ -47,8 +47,6 @@ typedef struct _PtPagePrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtPage, pt_page, ADW_TYPE_BIN)
 
-
-
 static void
 pt_page_set_property (GObject      *object,
                       guint         property_id,
@@ -79,7 +77,7 @@ pt_page_set_property (GObject      *object,
     priv->can_proceed = g_value_get_boolean (value);
     g_object_notify_by_pspec (object, pspec);
 
-    // Hack: force the buttons to update by making the carousel emit its position again
+    /* Hack: force the buttons to update by making the carousel emit its position again */
     g_object_notify (G_OBJECT (gtk_widget_get_parent (GTK_WIDGET (self))), "position");
     break;
   default:
@@ -87,7 +85,6 @@ pt_page_set_property (GObject      *object,
     break;
   }
 }
-
 
 void
 pt_page_set_subpage (PtPage *self, PtPage *subpage)
@@ -105,8 +102,6 @@ pt_page_set_subpage (PtPage *self, PtPage *subpage)
     gtk_stack_remove (priv->subpage_stack, gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"));
 }
 
-
-
 PtPage *
 pt_page_get_subpage (PtPage *self)
 {
@@ -118,7 +113,6 @@ pt_page_get_subpage (PtPage *self)
 
   return PT_PAGE (gtk_stack_get_child_by_name (priv->subpage_stack, "subpage"));
 }
-
 
 static void
 pt_page_get_property (GObject    *object,
@@ -154,7 +148,6 @@ pt_page_get_property (GObject    *object,
   }
 }
 
-
 static void
 pt_page_finalize (GObject *object)
 {
@@ -165,7 +158,6 @@ pt_page_finalize (GObject *object)
 
   G_OBJECT_CLASS (pt_page_parent_class)->finalize (object);
 }
-
 
 static void
 pt_page_class_init (PtPageClass *klass)
@@ -236,7 +228,6 @@ pt_page_class_init (PtPageClass *klass)
   gtk_widget_class_bind_template_child_private (widget_class, PtPage, subpage_stack);
 }
 
-
 static void
 pt_page_init (PtPage *self)
 {
@@ -246,17 +237,15 @@ pt_page_init (PtPage *self)
   priv = pt_page_get_instance_private (self);
   priv->can_proceed = TRUE;
 
-  // Prerender ourselves so everything is silky smooth
+  /* Prerender ourselves so everything is silky smooth */
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
-
 
 PtPage *
 pt_page_new (void)
 {
   return PT_PAGE (g_object_new (PT_TYPE_PAGE, NULL));
 }
-
 
 void
 pt_page_set_summary (PtPage *self, const char *summary)
@@ -270,7 +259,6 @@ pt_page_set_summary (PtPage *self, const char *summary)
   gtk_label_set_label (priv->lbl_summary, label->str);
 }
 
-
 void
 pt_page_set_explanation (PtPage *self, const char *explanation)
 {
@@ -282,7 +270,6 @@ pt_page_set_explanation (PtPage *self, const char *explanation)
 
   gtk_label_set_label (priv->lbl_explanation, label->str);
 }
-
 
 void
 pt_page_set_image_uri (PtPage *self, const char *uri)
@@ -301,7 +288,6 @@ pt_page_set_image_uri (PtPage *self, const char *uri)
   else
     gtk_picture_set_paintable (priv->image, GDK_PAINTABLE (texture));
 }
-
 
 void
 pt_page_set_widget (PtPage *self, GtkWidget *widget)
@@ -352,7 +338,6 @@ pt_page_set_can_proceed (PtPage *self, gboolean can_proceed)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CAN_PROCEED]);
 }
 
-
 void
 pt_page_switch_to_subpage (PtPage *self)
 {
@@ -371,6 +356,6 @@ pt_page_switch_to_subpage (PtPage *self)
   g_signal_emit (PT_PAGE (gtk_stack_get_child_by_name (priv->subpage_stack, "subpage")),
                  signals[ACTIVATED], 0, TRUE);
 
-  // Unfocus whatever is focused so the keyboard doesn't get stuck up
+  /* Unfocus whatever is focused so the keyboard doesn't get stuck up */
   gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))), NULL);
 }

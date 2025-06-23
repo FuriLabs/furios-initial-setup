@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2025 Furi Labs
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 #pragma once
 
 #include <adwaita.h>

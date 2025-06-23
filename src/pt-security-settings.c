@@ -55,8 +55,7 @@ password_changed_cb (PasswdHandler      *handler,
                      void               *self)
 {
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (PT_SECURITY_SETTINGS (self));
-  if (error)
-  {
+  if (error) {
     priv->apply_cb (self, FALSE, priv->apply_user_data);
     g_warning ("Error changing password: %s", error->message);
     return;
@@ -71,8 +70,7 @@ auth_cb (PasswdHandler      *handler,
          void               *self)
 {
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (PT_SECURITY_SETTINGS (self));
-  if (error)
-  {
+  if (error) {
     priv->apply_cb (self, FALSE, priv->apply_user_data);
     g_warning ("Error authenticating: %s", error->message);
     return;
@@ -99,15 +97,12 @@ pt_security_settings_apply (GObject *self, ApplyCallback cb, gpointer user_data)
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (PT_SECURITY_SETTINGS (self));
   PasswdHandler *passwd_handler;
 
-  if (priv->ready)
-  {
+  if (priv->ready) {
     priv->apply_cb = cb;
     priv->apply_user_data = user_data;
     passwd_handler = passwd_init ();
     passwd_authenticate (passwd_handler, DEFAULT_PASSWORD, auth_cb, self);
-  }
-  else
-  {
+  } else {
     g_warning ("Password not ready");
     cb (self, FALSE, user_data);
   }
@@ -124,30 +119,21 @@ update_password_match (PtSecuritySettings *self)
   password = gtk_editable_get_text (GTK_EDITABLE (priv->password_entry));
   verify = gtk_editable_get_text (GTK_EDITABLE (priv->verify_entry));
 
-  if (strlen (verify) > 0)
-  {
-    if (strlen (password) < 6)
-    {
+  if (strlen (verify) > 0) {
+    if (strlen (password) < 6) {
       gtk_widget_add_css_class (GTK_WIDGET (priv->password_entry), "error");
       gtk_widget_add_css_class (GTK_WIDGET (priv->verify_entry), "error");
-    }
-    else
-    {
+    } else {
       gtk_widget_remove_css_class (GTK_WIDGET (priv->password_entry), "error");
 
-      if (strcmp (password, verify) != 0)
-      {
+      if (strcmp (password, verify) != 0) {
         gtk_widget_add_css_class (GTK_WIDGET (priv->verify_entry), "error");
-      }
-      else
-      {
+      } else {
         gtk_widget_remove_css_class (GTK_WIDGET (priv->verify_entry), "error");
         can_proceed = TRUE;
       }
     }
-  }
-  else
-  {
+  } else {
     gtk_widget_remove_css_class (GTK_WIDGET (priv->verify_entry), "error");
   }
 
@@ -409,7 +395,7 @@ handle_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVaria
         break;
     }
 
-    // Go back to the first screen so the user can select the finger again
+    /* Go back to the first screen so the user can select the finger again */
     if (error_code != ERROR_FINGER_NOT_RECOGNIZED && error_code != ERROR_NONE) {
       gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
       gtk_widget_set_visible (priv->enroll_step, FALSE);
@@ -448,9 +434,8 @@ find_child_by_name (GtkWidget *widget, const gchar *name)
 
   const gchar *child_name = gtk_widget_get_name (widget);
 
-  if (!GTK_IS_WIDGET (widget)) {
+  if (!GTK_IS_WIDGET (widget))
     return NULL;
-  }
 
   if (g_strcmp0 (name, child_name) == 0)
       return widget;
@@ -492,13 +477,13 @@ on_finger_activated (GtkListBox *box, GtkListBoxRow *row, gpointer user_data)
       g_warning ("Error calling Enroll: %s\n", error->message);
       g_clear_error (&error);
 
-      // Go back to finger selection if enrollment fails
+      /* Go back to finger selection if enrollment fails */
       gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
       gtk_widget_set_visible (priv->enroll_step, FALSE);
     } else if (!success) {
       g_warning ("Failed to start enrollment");
 
-      // Go back to finger selection if enrollment fails
+      /* Go back to finger selection if enrollment fails */
       gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
       gtk_widget_set_visible (priv->enroll_step, FALSE);
     }
@@ -554,7 +539,7 @@ init_dbus_proxies (PtSecuritySettings *self)
 static void
 register_fingerprint (PtSecuritySettings *self)
 {
-  // Still absolutely GHASTLY, GNARLY, AWFUL
+  /* Still absolutely GHASTLY, GNARLY, AWFUL */
   PtPage *parent_page = PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
 
@@ -582,8 +567,7 @@ pt_security_settings_set_property (GObject *object,
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
 
-  switch (property_id)
-  {
+  switch (property_id) {
   case PROP_READY:
     priv->ready = g_value_get_boolean (value);
     break;
@@ -602,8 +586,7 @@ pt_security_settings_get_property (GObject *object,
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
 
-  switch (property_id)
-  {
+  switch (property_id) {
   case PROP_READY:
     g_value_set_boolean (value, priv->ready);
     break;

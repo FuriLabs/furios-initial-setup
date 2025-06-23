@@ -19,11 +19,11 @@
 #include "ed25519/ed25519.h"
 
 #define PROVISION_URL "http://provision.furios.io/"
-// PROVISION_URL being HTTP instead of HTTPS is OK because any script
-// that we need to run from that host will be signed with the key below
-// We use HTTP instead of HTTPS so that we can ensure we'll be able to
-// hot-patch any issues even if time sync fails, or Let's Encrypt stops
-// being trusted, or anything else that's out of our control.
+/* PROVISION_URL being HTTP instead of HTTPS is OK because any script
+ * that we need to run from that host will be signed with the key below
+ * We use HTTP instead of HTTPS so that we can ensure we'll be able to
+ * hot-patch any issues even if time sync fails, or Let's Encrypt stops
+ * being trusted, or anything else that's out of our control. */
 #define PROVISION_KEY "E4jOdnqXFR0mhBf6E+NAOxLvmAgteppg+b7CBJmy3j8="
 
 enum
@@ -88,8 +88,8 @@ pt_update_progress_check_valid_date (PtUpdateProgress *self)
   gboolean valid;
 
   now = g_date_time_new_now_local ();
-  // This code was written on 2025-03-10, so if we get a date before that, it means
-  // we're not correctly synced up yet...
+  /* This code was written on 2025-03-10, so if we get a date before that, it means
+   * we're not correctly synced up yet... */
   min_date = g_date_time_new_local (2025, 3, 10, 0, 0, 0);
 
   valid = g_date_time_compare (now, min_date) >= 0;
@@ -109,8 +109,7 @@ pt_update_progress_set_property (GObject *object,
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (object);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
 
-  switch (property_id)
-  {
+  switch (property_id) {
   case PROP_READY:
     priv->ready = g_value_get_boolean (value);
     break;
@@ -129,8 +128,7 @@ pt_update_progress_get_property (GObject *object,
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (object);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
 
-  switch (property_id)
-  {
+  switch (property_id) {
   case PROP_READY:
     g_value_set_boolean (value, priv->ready);
     break;
@@ -144,7 +142,7 @@ static void
 on_reboot_clicked (GtkButton *button,
                    gpointer user_data)
 {
-  // Ugleh, again.
+  /* Ugleh, again. */
   g_spawn_command_line_async ("systemctl reboot", NULL);
 }
 
@@ -232,7 +230,7 @@ pt_update_progress_pulse_progress_cb (gpointer user_data)
   if (priv->progress_value >= 0.001)
     return G_SOURCE_REMOVE;
 
-  // Unfocus whatever is focused so the keyboard doesn't get stuck up
+  /* Unfocus whatever is focused so the keyboard doesn't get stuck up */
   gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))), GTK_WIDGET (priv->progress));
 
   gtk_progress_bar_pulse (priv->progress);
@@ -290,11 +288,11 @@ provision_message_complete_cb (GObject *source,
   status = soup_message_get_status (msg);
 
   if (status == SOUP_STATUS_NO_CONTENT) {
-    // 204 No Content - nothing to do
+    /* 204 No Content - nothing to do */
     g_debug ("No provisioning script available");
     goto fail;
   } else if (status != SOUP_STATUS_OK) {
-    // Not 200 OK - just continue
+    /* Not 200 OK - just continue */
     g_warning ("Provision check failed with status %d", status);
     goto fail;
   }
@@ -324,7 +322,7 @@ provision_message_complete_cb (GObject *source,
 
   key = g_base64_decode (PROVISION_KEY, &key_len);
 
-  // 200 OK - guess we got something to do!
+  /* 200 OK - guess we got something to do! */
   data = g_bytes_get_data (bytes, &length);
 
   if (length == 0) {
@@ -339,7 +337,7 @@ provision_message_complete_cb (GObject *source,
     g_debug ("Provision script signature check PASSED");
   }
 
-  // Hell yeah, signature check passed too. It's time to RUN IT
+  /* Hell yeah, signature check passed too. It's time to RUN IT */
   script_path = g_build_filename (g_get_tmp_dir (), "furios-provision", NULL);
   close (g_mkstemp (script_path));
 
@@ -357,9 +355,8 @@ provision_message_complete_cb (GObject *source,
   g_debug ("Executing provision script: %s", script_path);
 
   g_spawn_command_line_sync (script_path, NULL, NULL, NULL, &error);
-  if (error) {
+  if (error)
     g_warning ("Failed to execute provision script: %s", error->message);
-  }
 
 fail:
   if (script_path)
@@ -438,7 +435,7 @@ pt_update_progress_start_provision_check (PtUpdateProgress *self)
   soup_message_set_request_body_from_bytes (msg, "application/x-www-form-urlencoded", bytes);
 
   soup_session_send_and_read_async (session, msg, G_PRIORITY_DEFAULT, NULL,
-                          provision_message_complete_cb, self);
+                                    provision_message_complete_cb, self);
 }
 
 static void
@@ -509,7 +506,7 @@ set_ntp_cb (GObject *source_object,
       priv->ntp_sync_attempts++;
       g_print ("Retrying NTP sync, attempt %d/%d\n", priv->ntp_sync_attempts, MAX_NTP_ATTEMPTS);
 
-      // Schedule the next attempt after 3 seconds
+      /* Schedule the next attempt after 3 seconds */
       g_timeout_add_seconds (3, retry_ntp_sync, self);
       return;
     } else {
@@ -530,16 +527,16 @@ set_ntp_cb (GObject *source_object,
   }
 
   if (ntp_active && pt_update_progress_check_valid_date (self)) {
-    // NTP is active and date is valid, proceed with updates
+    /* NTP is active and date is valid, proceed with updates */
     pt_update_progress_start_provision_check (self);
   } else if (priv->ntp_sync_attempts < MAX_NTP_ATTEMPTS) {
     priv->ntp_sync_attempts++;
     g_print ("Retrying NTP sync, attempt %d/%d\n", priv->ntp_sync_attempts, MAX_NTP_ATTEMPTS);
 
-    // Schedule the next attempt after 3 seconds
+    /* Schedule the next attempt after 3 seconds */
     g_timeout_add_seconds (3, retry_ntp_sync, self);
   } else if (!pt_update_progress_check_valid_date (self)) {
-    // NTP failed MAX_NTP_ATTEMPTS times in a row AND our date still looks wrong... give up.
+    /* NTP failed MAX_NTP_ATTEMPTS times in a row AND our date still looks wrong... give up. */
     priv->had_error = TRUE;
     g_warning ("Giving up after %d attempts - couldn't synchronize system clock and date is invalid", MAX_NTP_ATTEMPTS);
     gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
@@ -765,27 +762,27 @@ aptkit_check_for_updates (PtUpdateProgress *self,
   pkg_downgrades = g_variant_get_child_value (packages, 5);
   dep_downgrades = g_variant_get_child_value (dependencies, 5);
 
-  // Check for upgrades
+  /* Check for upgrades */
   g_variant_iter_init (&iter, pkg_upgrades);
   if (g_variant_iter_n_children (&iter) > 0)
     return TRUE;
 
-  // Check for package downgrades
+  /* Check for package downgrades */
   g_variant_iter_init (&iter, pkg_downgrades);
   if (g_variant_iter_n_children (&iter) > 0)
     return TRUE;
 
-  // Check for dependency upgrades
+  /* Check for dependency upgrades */
   g_variant_iter_init (&iter, dep_upgrades);
   if (g_variant_iter_n_children (&iter) > 0)
     return TRUE;
 
-  // Check for dependency downgrades
+  /* Check for dependency downgrades */
   g_variant_iter_init (&iter, dep_downgrades);
   if (g_variant_iter_n_children (&iter) > 0)
     return TRUE;
 
-  // OK, nothing to see here
+  /* OK, nothing to see here */
   return FALSE;
 }
 
@@ -874,7 +871,7 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
       g_autoptr(GVariant) packages = NULL;
       g_autoptr(GVariant) dependencies = NULL;
 
-      // Get both properties - one will be the 'value' parameter, get the other from proxy
+      /* Get both properties - one will be the 'value' parameter, get the other from proxy */
       if (g_strcmp0 (property_name, "Packages") == 0) {
         packages = g_variant_ref (value);
         dependencies = g_dbus_proxy_get_cached_property (proxy, "Dependencies");
@@ -927,8 +924,8 @@ pt_update_progress_begin (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
 
-  // WTF: GTK progress bars need to be manually pumped for the pulse to move
-  // ????????????????? what
+  /* WTF: GTK progress bars need to be manually pumped for the pulse to move
+   * ????????????????? what */
   g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
 
   priv->ready = FALSE;
