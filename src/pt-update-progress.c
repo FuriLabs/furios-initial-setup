@@ -59,6 +59,7 @@ typedef struct _PtUpdateProgressPrivate
   gboolean        safe_mode;
   TransactionType current_transaction;
   guint           ntp_sync_attempts;
+  guint           pulse_timeout_id;
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
@@ -147,6 +148,24 @@ on_reboot_clicked (GtkButton *button,
 }
 
 static void
+pt_update_progress_dispose (GObject *object)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (object);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  if (priv->pulse_timeout_id != 0) {
+    g_source_remove (priv->pulse_timeout_id);
+    priv->pulse_timeout_id = 0;
+  }
+
+  g_clear_object (&priv->aptkit_proxy);
+  g_clear_object (&priv->transaction_proxy);
+  g_clear_object (&priv->timedate_proxy);
+
+  G_OBJECT_CLASS (pt_update_progress_parent_class)->dispose (object);
+}
+
+static void
 pt_update_progress_class_init (PtUpdateProgressClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -154,6 +173,7 @@ pt_update_progress_class_init (PtUpdateProgressClass *klass)
 
   object_class->set_property = pt_update_progress_set_property;
   object_class->get_property = pt_update_progress_get_property;
+  object_class->dispose = pt_update_progress_dispose;
 
   props[PROP_READY] =
     g_param_spec_boolean ("ready",
@@ -204,6 +224,7 @@ pt_update_progress_init (PtUpdateProgress *self)
   priv->transaction_proxy = NULL;
   priv->timedate_proxy = NULL;
   priv->ntp_sync_attempts = 0;
+  priv->pulse_timeout_id = 0;
 
   priv->tried_safe_mode = FALSE;
 
@@ -225,13 +246,28 @@ static gboolean
 pt_update_progress_pulse_progress_cb (gpointer user_data)
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
-  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  PtUpdateProgressPrivate *priv;
+  GtkRoot *root;
 
-  if (priv->progress_value >= 0.001)
+  if (!PT_IS_UPDATE_PROGRESS (self))
     return G_SOURCE_REMOVE;
 
+  priv = pt_update_progress_get_instance_private (self);
+
+  if (priv->progress_value >= 0.001) {
+    priv->pulse_timeout_id = 0;
+    return G_SOURCE_REMOVE;
+  }
+
+  if (!GTK_IS_PROGRESS_BAR (priv->progress)) {
+    priv->pulse_timeout_id = 0;
+    return G_SOURCE_REMOVE;
+  }
+
   /* Unfocus whatever is focused so the keyboard doesn't get stuck up */
-  gtk_window_set_focus (GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (self))), GTK_WIDGET (priv->progress));
+  root = gtk_widget_get_root (GTK_WIDGET (self));
+  if (GTK_IS_WINDOW (root))
+    gtk_window_set_focus (GTK_WINDOW (root), GTK_WIDGET (priv->progress));
 
   gtk_progress_bar_pulse (priv->progress);
 
@@ -242,6 +278,11 @@ static void
 pt_update_progress_finish (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  if (priv->pulse_timeout_id != 0) {
+    g_source_remove (priv->pulse_timeout_id);
+    priv->pulse_timeout_id = 0;
+  }
 
   priv->progress_value = 1.0;
   gtk_progress_bar_set_fraction (priv->progress, 1.0);
@@ -926,7 +967,7 @@ pt_update_progress_begin (PtUpdateProgress *self)
 
   /* WTF: GTK progress bars need to be manually pumped for the pulse to move
    * ????????????????? what */
-  g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
+  priv->pulse_timeout_id = g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
 
   priv->ready = FALSE;
   priv->did_update_any = FALSE;
