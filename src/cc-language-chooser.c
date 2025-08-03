@@ -137,10 +137,10 @@ language_widget_new (const char *locale_id,
 {
   GtkWidget *label;
   gchar *locale_name, *locale_current_name, *locale_untranslated_name;
-  gchar *language = NULL;
-  gchar *language_name;
-  gchar *country = NULL;
-  gchar *country_name = NULL;
+  g_autofree gchar *language = NULL;
+  g_autofree gchar *language_name = NULL;
+  g_autofree gchar *country = NULL;
+  g_autofree gchar *country_name = NULL;
   LanguageWidget *widget = g_new0 (LanguageWidget, 1);
 
   if (!gnome_parse_locale (locale_id, &language, &country, NULL, NULL))
@@ -201,11 +201,6 @@ language_widget_new (const char *locale_id,
   g_object_set_data_full (G_OBJECT (widget->box), "language-widget", widget,
                           language_widget_free);
 
-  g_free (language);
-  g_free (language_name);
-  g_free (country);
-  g_free (country_name);
-
   return widget->box;
 }
 
@@ -213,10 +208,10 @@ static void
 language_widget_update (LanguageWidget *widget)
 {
   GtkWidget *label;
-  gchar *language = NULL;
-  gchar *language_name;
-  gchar *country = NULL;
-  gchar *country_name = NULL;
+  g_autofree gchar *language = NULL;
+  g_autofree gchar *language_name = NULL;
+  g_autofree gchar *country = NULL;
+  g_autofree gchar *country_name = NULL;
 
   if (!gnome_parse_locale (widget->locale_id, &language, &country, NULL, NULL))
     return;
@@ -240,11 +235,6 @@ language_widget_update (LanguageWidget *widget)
     if (GTK_IS_LABEL (label))
       gtk_label_set_text (GTK_LABEL (label), country_name);
   }
-
-  g_free (language);
-  g_free (language_name);
-  g_free (country);
-  g_free (country_name);
 }
 
 static void
@@ -451,7 +441,7 @@ walk_all_widgets_recursive (GtkWidget *widget)
   if (GTK_IS_LABEL (widget)) {
     const char *original_text = g_object_get_data (G_OBJECT (widget), "original-text");
     if (!original_text) {
-      g_object_set_data (G_OBJECT (widget), "original-text", g_strdup (gtk_label_get_text (GTK_LABEL (widget))));
+      g_object_set_data_full (G_OBJECT (widget), "original-text", g_strdup (gtk_label_get_text (GTK_LABEL (widget))), g_free);
       original_text = g_object_get_data (G_OBJECT (widget), "original-text");
     }
 
@@ -549,6 +539,14 @@ cc_language_chooser_finalize (GObject *object)
   CcLanguageChooserPrivate *priv = cc_language_chooser_get_instance_private (chooser);
 
   g_free (priv->language);
+
+  if (priv->cancellable) {
+    g_cancellable_cancel (priv->cancellable);
+    g_clear_object (&priv->cancellable);
+  }
+
+  g_clear_object (&priv->localed);
+  g_clear_object (&priv->user_manager);
 
   G_OBJECT_CLASS (cc_language_chooser_parent_class)->finalize (object);
 }
@@ -720,6 +718,7 @@ cc_language_chooser_init (CcLanguageChooser *chooser)
   gtk_widget_init_template (GTK_WIDGET (chooser));
   g_idle_add (update_lang, NULL);
 
+  priv->cancellable = g_cancellable_new ();
   priv->user_manager = act_user_manager_get_default ();
   priv->user = act_user_manager_get_user_by_id (priv->user_manager, getuid ());
 
