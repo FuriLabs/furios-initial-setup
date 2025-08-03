@@ -175,7 +175,7 @@ static void
 pt_check_should_exit (PtWindow *self)
 {
   const gchar *home_dir;
-  const gchar *file_path;
+  g_autofree gchar *file_path = NULL;
 
   if (self->pending_commits == 0) {
     g_debug ("Everything went well. See you never again!\n");
@@ -262,7 +262,7 @@ pt_set_scaling (GtkScale *scale)
   int value = gtk_range_get_value (GTK_RANGE (scale));
   g_autoptr (GSettings) display_settings = g_settings_new ("sm.puri.phosh.monitors");
   g_autoptr (GVariantDict) display_config = g_variant_dict_new (NULL);
-  const char *command;
+  g_autofree char *command = NULL;
 
   /* Don't change the size from under the user */
   if (gtk_widget_get_state_flags (GTK_WIDGET (scale)) & GTK_STATE_FLAG_ACTIVE) {
@@ -298,10 +298,13 @@ pt_window_set_property (GObject *object,
   switch (property_id) {
   case PROP_ANDROID_AUTOSTART:
     self->android_autostart = g_value_get_boolean (value);
-    if (self->android_autostart)
-      g_file_set_contents (g_build_filename (g_get_home_dir (), ".android_enable", NULL), "", 0, NULL);
-    else
-      unlink (g_build_filename (g_get_home_dir (), ".android_enable", NULL));
+    if (self->android_autostart) {
+      g_autofree char *android_enable_path = g_build_filename (g_get_home_dir (), ".android_enable", NULL);
+      g_file_set_contents (android_enable_path, "", 0, NULL);
+    } else {
+      g_autofree char *android_enable_path = g_build_filename (g_get_home_dir (), ".android_enable", NULL);
+      unlink (android_enable_path);
+    }
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -478,6 +481,7 @@ static void
 pt_window_init (PtWindow *self)
 {
   g_autoptr (GtkCssProvider) css_provider = gtk_css_provider_new ();
+  g_autofree char *android_enable_path = NULL;
 
   gtk_css_provider_load_from_resource (css_provider, "/io/furios/InitialSetup/style.css");
   gtk_style_context_add_provider_for_display (gdk_display_get_default (),
@@ -493,8 +497,9 @@ pt_window_init (PtWindow *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   self->interface_settings = g_settings_new (INTERFACE_PATH_ID);
-  self->android_autostart = g_file_test (g_build_filename (g_get_home_dir (), ".android_enable", NULL),
-                                         G_FILE_TEST_EXISTS);
+
+  android_enable_path = g_build_filename (g_get_home_dir (), ".android_enable", NULL);
+  self->android_autostart = g_file_test (android_enable_path, G_FILE_TEST_EXISTS);
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ANDROID_AUTOSTART]);
   setup_accent_color_toggles (self);
