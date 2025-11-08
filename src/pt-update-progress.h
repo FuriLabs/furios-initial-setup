@@ -22,7 +22,8 @@ struct _PtUpdateProgressClass
   AdwBinClass parent_class;
 };
 
-PtUpdateProgress          *pt_update_progress_new(void);
-void                      pt_update_progress_begin(PtUpdateProgress *self);
+PtUpdateProgress         *pt_update_progress_new (void);
+void                      pt_update_progress_begin (PtUpdateProgress *self);
+void                      pt_update_progress_skip (PtUpdateProgress *self);
 
 G_END_DECLS

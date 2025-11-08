@@ -292,13 +292,13 @@ pt_update_progress_finish (PtUpdateProgress *self)
     gtk_widget_set_visible (GTK_WIDGET (priv->label), TRUE);
   }
 
-  if (!priv->did_update_any) {
-    priv->ready = TRUE;
-    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
-  } else {
+  if (priv->did_update_any) {
     gtk_widget_set_visible (GTK_WIDGET (priv->reboot), TRUE);
     gtk_widget_set_visible (GTK_WIDGET (priv->label), FALSE);
   }
+
+  priv->ready = TRUE;
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 }
 
 static void
@@ -995,6 +995,34 @@ pt_update_progress_begin (PtUpdateProgress *self)
                             NULL,
                             timedate_proxy_setup_cb,
                             self);
+}
+
+void
+pt_update_progress_skip (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv;
+
+  g_return_if_fail (PT_IS_UPDATE_PROGRESS (self));
+
+  priv = pt_update_progress_get_instance_private (self);
+
+  if (priv->pulse_timeout_id != 0) {
+    g_source_remove (priv->pulse_timeout_id);
+    priv->pulse_timeout_id = 0;
+  }
+
+  /* Don't try to cancel in-flight transactions here; just stop blocking the flow. */
+  priv->had_error = FALSE;
+  priv->did_update_any = FALSE;
+  priv->progress_value = 1.0;
+
+  gtk_progress_bar_set_fraction (priv->progress, 1.0);
+  gtk_widget_set_visible (GTK_WIDGET (priv->reboot), FALSE);
+
+  gtk_widget_set_sensitive (GTK_WIDGET (self), FALSE);
+
+  priv->ready = TRUE;
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_READY]);
 }
 
 PtUpdateProgress *

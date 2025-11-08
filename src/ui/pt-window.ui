@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
+  <requires lib="adw" version="1.0"/>
   <template class="PtWindow" parent="AdwApplicationWindow">
     <property name="default-width">600</property>
     <property name="default-height">300</property>
     <child>
       <object class="GtkOverlay">
         <child>
-          <object class="GtkBox" id="">
+          <object class="GtkBox">
             <property name="orientation">vertical</property>
             <property name="halign">fill</property>
             <property name="valign">fill</property>
@@ -27,6 +28,16 @@
         <child type="overlay">
           <object class="GtkBox">
             <property name="orientation">vertical</property>
+
+            <child>
+              <object class="AdwBanner" id="skip_updates_banner">
+                <property name="revealed">false</property>
+                <property name="title" translatable="true">Want to skip updates?</property>
+                <property name="button-label" translatable="true">Skip</property>
+                <signal name="button-clicked" handler="on_skip_updates_clicked"/>
+              </object>
+            </child>
+
             <child>
               <object class="AdwHeaderBar">
                 <property name="title-widget">
@@ -52,6 +63,7 @@
                         <lookup name="child">carousel_overlay</lookup>
                       </closure>
                     </binding>
+
                     <child>
                       <object class="PtPage" id="language-page">
                         <property name="image-uri">resource:///io/furios/InitialSetup/pages/welcome.svg</property>
@@ -196,16 +208,16 @@
                                     </property>
                                     <marks>
                                       <mark value="0" translatable="yes">Tiny</mark>
-                                      <mark value="1" />
-                                      <mark value="2" />
-                                      <mark value="3" />
-                                      <mark value="4" />
-                                      <mark value="5" />
-                                      <mark value="6" />
-                                      <mark value="7" />
+                                      <mark value="1"/>
+                                      <mark value="2"/>
+                                      <mark value="3"/>
+                                      <mark value="4"/>
+                                      <mark value="5"/>
+                                      <mark value="6"/>
+                                      <mark value="7"/>
                                       <mark value="8" translatable="yes">Huge</mark>
                                     </marks>
-                                    <signal name="value-changed" handler="pt_set_scaling" />
+                                    <signal name="value-changed" handler="pt_set_scaling"/>
                                   </object>
                                 </child>
                               </object>
@@ -224,7 +236,7 @@
                             <property name="valign">fill</property>
                           </object>
                         </property>
-                        <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"></property>
+                        <property name="image-uri" bind-source="network_list" bind-property="signal-indicator" bind-flags="sync-create"/>
                         <property name="subpage">
                           <object class="PtPage">
                             <property name="summary" translatable="yes">Checking for updates</property>
@@ -235,10 +247,10 @@
                               </object>
                             </property>
                             <property name="image-uri">resource:///io/furios/InitialSetup/pages/update.svg</property>
-                            <signal name="activated" handler="pt_update_begin" object="update_progress" />
+                            <signal name="activated" handler="pt_update_begin" object="update_progress"/>
                           </object>
                         </property>
-                        <property name="can-proceed" bind-source="update_progress" bind-property="ready" bind-flags="sync-create"></property>
+                        <property name="can-proceed" bind-source="update_progress" bind-property="ready" bind-flags="sync-create"/>
                       </object>
                     </child>
 
@@ -252,7 +264,6 @@
                             <property name="valign">fill</property>
                           </object>
                         </property>
-
                         <property name="subpage">
                           <object class="PtPage">
                             <property name="image-uri">resource:///io/furios/InitialSetup/pages/fingerprint.svg</property>
@@ -275,7 +286,6 @@
                                         <property name="margin-bottom">24</property>
                                         <property name="margin-start">24</property>
                                         <property name="margin-end">24</property>
-
                                         <child>
                                           <object class="GtkListBox">
                                             <property name="name">finger_list</property>
@@ -286,7 +296,6 @@
                                             </style>
                                           </object>
                                         </child>
-
                                         <child>
                                           <object class="GtkOverlay">
                                             <property name="name">enroll_step</property>
@@ -317,8 +326,8 @@
                             </property>
                           </object>
                         </property>
-                        <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"></property>
-                        <signal name="apply-changes" handler="pt_commit_security_settings" object="security-page" />
+                        <property name="can-proceed" bind-source="security_settings" bind-property="ready" bind-flags="sync-create"/>
+                        <signal name="apply-changes" handler="pt_commit_security_settings" object="security-page"/>
                       </object>
                     </child>
 
@@ -346,7 +355,7 @@
                                     <child>
                                       <object class="GtkSwitch" id="android_autostart_switch">
                                         <property name="valign">center</property>
-                                        <property name="active" bind-source="PtWindow" bind-property="android_autostart" bind-flags="sync-create | bidirectional"></property>
+                                        <property name="active" bind-source="PtWindow" bind-property="android_autostart" bind-flags="sync-create | bidirectional"/>
                                         <accessibility>
                                           <property name="label" translatable="yes">Enabled</property>
                                         </accessibility>

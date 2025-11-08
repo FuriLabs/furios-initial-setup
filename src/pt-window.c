@@ -38,21 +38,27 @@ enum {
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
-
 struct _PtWindow {
   AdwApplicationWindow parent_instance;
 
   AdwCarousel         *main_carousel;
   GtkCssProvider      *theme_transition_provider;
-  guint               transition_disable_timeout;
-  gboolean            android_autostart;
+  guint                transition_disable_timeout;
+  gboolean             android_autostart;
 
-  int                 pending_commits;
+  int                  pending_commits;
 
   GSettings           *interface_settings;
-  gdouble             last_position;
+  gdouble              last_position;
 
   GtkWidget           *accent_box;
+
+  PtUpdateProgress    *update_progress;
+  GtkWidget           *update_page;
+  AdwBanner           *skip_updates_banner;
+
+  GtkWidget           *password_page;
+  gboolean             updates_skipped;
 };
 
 G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -60,8 +66,13 @@ G_DEFINE_TYPE (PtWindow, pt_window, ADW_TYPE_APPLICATION_WINDOW)
 static void
 goto_page (PtWindow *self, int num)
 {
-  int n_pages = adw_carousel_get_n_pages (ADW_CAROUSEL (self->main_carousel));
+  int n_pages;
   GtkWidget *page;
+
+  if (!self->main_carousel)
+    return;
+
+  n_pages = adw_carousel_get_n_pages (ADW_CAROUSEL (self->main_carousel));
 
   if (num < 0)
     return;
@@ -69,17 +80,18 @@ goto_page (PtWindow *self, int num)
   if (num >= n_pages)
     return;
 
-  page = adw_carousel_get_nth_page (self->main_carousel, num);
-  adw_carousel_scroll_to (self->main_carousel, page, TRUE);
+  page = adw_carousel_get_nth_page (ADW_CAROUSEL (self->main_carousel), num);
+  adw_carousel_scroll_to (ADW_CAROUSEL (self->main_carousel), page, TRUE);
 }
 
 static void
 on_flip_page_activated (GtkWidget *widget, const char *action_name, GVariant *param)
 {
   PtWindow *self = PT_WINDOW (widget);
-  int num = adw_carousel_get_position (self->main_carousel);
+  int num;
   gint32 offset;
 
+  num = adw_carousel_get_position (self->main_carousel);
   offset = g_variant_get_int32 (param);
   goto_page (self, num + offset);
 }
@@ -105,8 +117,9 @@ get_btn_previous_visible (GObject *object, double position)
 static gboolean
 get_btn_next_sensitive (GObject *object, AdwCarousel *carousel, double position)
 {
-  PtPage *page = PT_PAGE (adw_carousel_get_nth_page (carousel, position));
+  PtPage *page;
 
+  page = PT_PAGE (adw_carousel_get_nth_page (carousel, position));
   return pt_page_get_can_proceed (page);
 }
 
@@ -117,13 +130,30 @@ get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double posit
    * This is DEFINITELY NOT THE RIGHT PLACE TO DO THIS, but we want to ensure
    * that we unfocus any text entry or any other crap like that. So I'm just gonna
    * do it here */
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (carousel));
-  PtWindow *self = PT_WINDOW (root);
+  GtkRoot *root;
+  GtkWidget *prev_page;
+  PtWindow *self;
+  int cur_index;
+
+  root = gtk_widget_get_root (GTK_WIDGET (carousel));
+  self = PT_WINDOW (root);
 
   if (!G_APPROX_VALUE (self->last_position, position, 0.0001)) {
     gtk_window_set_focus (GTK_WINDOW (self), NULL);
     self->last_position = position;
   }
+
+  if (!self->updates_skipped || !self->update_page || !self->main_carousel)
+    return TRUE;
+
+  cur_index = (int) position;
+  if (cur_index <= 0)
+    return TRUE;
+
+  prev_page = adw_carousel_get_nth_page (self->main_carousel, cur_index - 1);
+
+  if (prev_page == self->update_page)
+    return FALSE;
 
   return TRUE;
 }
@@ -133,11 +163,15 @@ get_success_backdrop_opacity (GObject *object,
                               GtkBox *box,
                               double position)
 {
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (box));
-  PtWindow *self = PT_WINDOW (root);
+  GtkRoot *root;
+  PtWindow *self;
   guint page_count;
   gdouble opacity = 0.0;
-  AdwCarousel *carousel = self->main_carousel;
+  AdwCarousel *carousel;
+
+  root = gtk_widget_get_root (GTK_WIDGET (box));
+  self = PT_WINDOW (root);
+  carousel = self->main_carousel;
 
   if (!carousel)
     return 0.0;
@@ -151,11 +185,33 @@ get_success_backdrop_opacity (GObject *object,
   return opacity;
 }
 
+static int
+pt_window_get_page_index (PtWindow *self,
+                          GtkWidget *page)
+{
+  int i, n_pages;
+
+  if (!self->main_carousel || !page)
+    return -1;
+
+  n_pages = adw_carousel_get_n_pages (self->main_carousel);
+
+  for (i = 0; i < n_pages; i++) {
+    if (adw_carousel_get_nth_page (self->main_carousel, i) == page)
+      return i;
+  }
+
+  return -1;
+}
+
 static void
 pt_set_dark_mode (GtkToggleButton *btn, gpointer user_data)
 {
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (btn));
-  PtWindow *self = PT_WINDOW (root);
+  GtkRoot *root;
+  PtWindow *self;
+
+  root = gtk_widget_get_root (GTK_WIDGET (btn));
+  self = PT_WINDOW (root);
 
   g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
                        G_DESKTOP_COLOR_SCHEME_PREFER_DARK);
@@ -164,8 +220,11 @@ pt_set_dark_mode (GtkToggleButton *btn, gpointer user_data)
 static void
 pt_set_default_mode (GtkToggleButton *btn, gpointer user_data)
 {
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (btn));
-  PtWindow *self = PT_WINDOW (root);
+  GtkRoot *root;
+  PtWindow *self;
+
+  root = gtk_widget_get_root (GTK_WIDGET (btn));
+  self = PT_WINDOW (root);
 
   g_settings_set_enum (self->interface_settings, INTERFACE_COLOR_SCHEME_KEY,
                        G_DESKTOP_COLOR_SCHEME_DEFAULT);
@@ -194,8 +253,11 @@ pt_check_should_exit (PtWindow *self)
 static void
 pt_on_security_settings_applied (PtSecuritySettings *security_settings, gboolean ok, gpointer user_data)
 {
-  PtPage *page = PT_PAGE (user_data);
-  PtWindow *self = PT_WINDOW (gtk_widget_get_root (GTK_WIDGET (page)));
+  PtPage *page;
+  PtWindow *self;
+
+  page = PT_PAGE (user_data);
+  self = PT_WINDOW (gtk_widget_get_root (GTK_WIDGET (page)));
 
   if (ok) {
     self->pending_commits--;
@@ -215,9 +277,13 @@ pt_commit_security_settings (PtPage *page, gpointer user_data)
 static void
 pt_commit_language_settings (PtPage *page, gpointer user_data)
 {
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (page));
-  PtWindow *self = PT_WINDOW (root);
-  GtkWidget *language_chooser = pt_page_get_widget (page);
+  GtkRoot *root;
+  PtWindow *self;
+  GtkWidget *language_chooser;
+
+  root = gtk_widget_get_root (GTK_WIDGET (page));
+  self = PT_WINDOW (root);
+  language_chooser = pt_page_get_widget (page);
 
   cc_language_chooser_apply (CC_LANGUAGE_CHOOSER (language_chooser));
 
@@ -228,41 +294,159 @@ pt_commit_language_settings (PtPage *page, gpointer user_data)
 static void
 pt_commit_all (PtPage *final_page)
 {
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (final_page));
-  PtWindow *self = PT_WINDOW (root);
+  GtkRoot *root;
+  PtWindow *self;
   int i;
-  int n_pages = adw_carousel_get_n_pages (ADW_CAROUSEL (self->main_carousel));
+  int n_pages;
+
+  root = gtk_widget_get_root (GTK_WIDGET (final_page));
+  self = PT_WINDOW (root);
+  n_pages = adw_carousel_get_n_pages (ADW_CAROUSEL (self->main_carousel));
 
   self->pending_commits = 0;
 
   /* First we check how many commits we need to do */
   for (i = 0; i < n_pages; i++) {
-    PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
-    if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL))
+    PtPage *page;
+
+    page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
+    if (g_signal_handler_find (page,
+                               G_SIGNAL_MATCH_ID,
+                               g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)),
+                               0, NULL, NULL, NULL))
       self->pending_commits++;
   }
 
   /* And now we truly commit */
   for (i = 0; i < n_pages; i++) {
-    PtPage *page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
-    if (g_signal_handler_find (page, G_SIGNAL_MATCH_ID, g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)), 0, NULL, NULL, NULL))
+    PtPage *page;
+
+    page = PT_PAGE (adw_carousel_get_nth_page (self->main_carousel, i));
+    if (g_signal_handler_find (page,
+                               G_SIGNAL_MATCH_ID,
+                               g_signal_lookup ("apply-changes", G_OBJECT_TYPE (page)),
+                               0, NULL, NULL, NULL))
       g_signal_emit_by_name (page, "apply-changes");
+  }
+}
+
+static void
+on_update_progress_ready (GObject    *object,
+                          GParamSpec *pspec,
+                          gpointer    user_data)
+{
+  PtWindow *self;
+  gboolean ready = FALSE;
+
+  self = PT_WINDOW (user_data);
+
+  g_object_get (object, "ready", &ready, NULL);
+
+  if (ready && self->skip_updates_banner)
+    adw_banner_set_revealed (self->skip_updates_banner, FALSE);
+}
+
+static void
+on_carousel_position_changed (GObject    *object,
+                              GParamSpec *pspec,
+                              gpointer    user_data)
+{
+  PtWindow *self;
+  AdwCarousel *carousel;
+  int pos;
+  GtkWidget *page;
+  gboolean show = FALSE;
+  gboolean ready = FALSE;
+
+  self = PT_WINDOW (user_data);
+  carousel = ADW_CAROUSEL (object);
+
+  if (!self->skip_updates_banner)
+    return;
+
+  if (!self->update_progress || !self->update_page) {
+    adw_banner_set_revealed (self->skip_updates_banner, FALSE);
+  } else {
+    g_object_get (self->update_progress, "ready", &ready, NULL);
+
+    if (ready || self->updates_skipped) {
+      adw_banner_set_revealed (self->skip_updates_banner, FALSE);
+    } else {
+      pos = adw_carousel_get_position (carousel);
+      page = adw_carousel_get_nth_page (carousel, pos);
+
+      if (page == self->update_page)
+        show = TRUE;
+
+      adw_banner_set_revealed (self->skip_updates_banner, show);
+    }
+  }
+
+  if (self->updates_skipped && self->password_page && self->main_carousel) {
+    int current_index = adw_carousel_get_position (self->main_carousel);
+    int password_index = pt_window_get_page_index (self, self->password_page);
+
+    if (password_index >= 0 && current_index < password_index) {
+      GtkWidget *pwd_page = self->password_page;
+      adw_carousel_scroll_to (self->main_carousel, pwd_page, FALSE);
+    }
   }
 }
 
 static void
 pt_update_begin (PtUpdateProgress *update_progress)
 {
+  GtkRoot *root;
+  PtWindow *self;
+  GtkWidget *w;
+  GtkWidget *page = NULL;
+
+  root = gtk_widget_get_root (GTK_WIDGET (update_progress));
+  self = PT_WINDOW (root);
+
+  /* Remember which PtUpdateProgress is active */
+  self->update_progress = update_progress;
+
+  w = GTK_WIDGET (update_progress);
+  while (w) {
+    GtkWidget *parent = gtk_widget_get_parent (w);
+
+    if (!parent)
+      break;
+
+    if (ADW_IS_CAROUSEL (parent)) {
+      page = w;
+      break;
+    }
+
+    w = parent;
+  }
+
+  self->update_page = page;
+
+  if (self->skip_updates_banner)
+    adw_banner_set_revealed (self->skip_updates_banner, TRUE);
+
+  /* Hide banner again once updates are done (ready == TRUE) */
+  g_signal_connect (update_progress,
+                    "notify::ready",
+                    G_CALLBACK (on_update_progress_ready),
+                    self);
+
   pt_update_progress_begin (update_progress);
 }
 
 static gboolean
 pt_set_scaling (GtkScale *scale)
 {
-  int value = gtk_range_get_value (GTK_RANGE (scale));
-  g_autoptr (GSettings) display_settings = g_settings_new ("sm.puri.phosh.monitors");
-  g_autoptr (GVariantDict) display_config = g_variant_dict_new (NULL);
+  int value;
+  g_autoptr (GSettings) display_settings = NULL;
+  g_autoptr (GVariantDict) display_config = NULL;
   g_autofree char *command = NULL;
+
+  value = gtk_range_get_value (GTK_RANGE (scale));
+  display_settings = g_settings_new ("sm.puri.phosh.monitors");
+  display_config = g_variant_dict_new (NULL);
 
   /* Don't change the size from under the user */
   if (gtk_widget_get_state_flags (GTK_WIDGET (scale)) & GTK_STATE_FLAG_ACTIVE) {
@@ -280,7 +464,7 @@ pt_set_scaling (GtkScale *scale)
   g_spawn_command_line_async (command, NULL);
   g_variant_dict_insert_value (display_config, "HWCOMPOSER-1",
                                g_variant_new_parsed ("{'x':<%i>, 'y':<%i>, 'scale':<%d>}",
-                                                     0, 0, atof(SCREEN_SCALES[value])));
+                                                     0, 0, atof (SCREEN_SCALES[value])));
 
   g_settings_set_value (display_settings, "config", g_variant_dict_end (display_config));
 
@@ -387,13 +571,14 @@ get_untranslated_color (GDesktopAccentColor color)
 
 static void
 on_accent_color_toggled_cb (PtWindow *self,
-                            GtkToggleButton   *toggle)
+                            GtkToggleButton *toggle)
 {
   GDesktopAccentColor accent_color_from_key;
-  GDesktopAccentColor accent_color = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (toggle), "accent-color"));
+  GDesktopAccentColor accent_color;
 
-  accent_color_from_key = g_settings_get_enum (self->interface_settings,
-                                               INTERFACE_ACCENT_COLOR_KEY);
+  accent_color = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (toggle), "accent-color"));
+
+  accent_color_from_key = g_settings_get_enum (self->interface_settings, INTERFACE_ACCENT_COLOR_KEY);
 
   /* Don't unnecessarily set the key again */
   if (accent_color == accent_color_from_key)
@@ -407,12 +592,17 @@ on_accent_color_toggled_cb (PtWindow *self,
 static void
 setup_accent_color_toggles (PtWindow *self)
 {
-  GDesktopAccentColor accent_color = g_settings_get_enum (self->interface_settings, INTERFACE_ACCENT_COLOR_KEY);
+  GDesktopAccentColor accent_color;
   GDesktopAccentColor i;
 
+  accent_color = g_settings_get_enum (self->interface_settings, INTERFACE_ACCENT_COLOR_KEY);
+
   for (i = G_DESKTOP_ACCENT_COLOR_BLUE; i <= G_DESKTOP_ACCENT_COLOR_SLATE; i++) {
-    GtkWidget *button = GTK_WIDGET (gtk_toggle_button_new ());
-    GtkToggleButton *grouping_button = GTK_TOGGLE_BUTTON (gtk_widget_get_first_child (self->accent_box));
+    GtkWidget *button;
+    GtkToggleButton *grouping_button;
+
+    button = GTK_WIDGET (gtk_toggle_button_new ());
+    grouping_button = GTK_TOGGLE_BUTTON (gtk_widget_get_first_child (self->accent_box));
 
     gtk_widget_set_tooltip_text (button, get_color_tooltip (i));
     gtk_widget_add_css_class (button, "accent-button");
@@ -430,6 +620,38 @@ setup_accent_color_toggles (PtWindow *self)
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
 
     gtk_box_append (GTK_BOX (self->accent_box), button);
+  }
+}
+
+static void
+on_skip_updates_clicked (AdwBanner *banner,
+                         gpointer   user_data)
+{
+  GtkRoot *root;
+  PtWindow *self;
+  int pos;
+  int next_pos;
+
+  root = gtk_widget_get_root (GTK_WIDGET (banner));
+  self = PT_WINDOW (root);
+
+  if (self->update_progress)
+    pt_update_progress_skip (self->update_progress);
+
+  adw_banner_set_revealed (banner, FALSE);
+
+  if (self->main_carousel) {
+    pos = adw_carousel_get_position (self->main_carousel);
+    next_pos = pos + 1;
+
+    self->updates_skipped = TRUE;
+
+    if (next_pos < adw_carousel_get_n_pages (self->main_carousel))
+      self->password_page = adw_carousel_get_nth_page (self->main_carousel, next_pos);
+    else
+      self->password_page = NULL;
+
+    goto_page (self, next_pos);
   }
 }
 
@@ -460,6 +682,7 @@ pt_window_class_init (PtWindowClass *klass)
                                                "/io/furios/InitialSetup/ui/pt-window.ui");
   gtk_widget_class_bind_template_child (widget_class, PtWindow, main_carousel);
   gtk_widget_class_bind_template_child (widget_class, PtWindow, accent_box);
+  gtk_widget_class_bind_template_child (widget_class, PtWindow, skip_updates_banner);
 
   gtk_widget_class_bind_template_callback (widget_class, get_btn_next_visible);
   gtk_widget_class_bind_template_callback (widget_class, get_btn_previous_visible);
@@ -473,6 +696,7 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
   gtk_widget_class_bind_template_callback (widget_class, pt_update_begin);
+  gtk_widget_class_bind_template_callback (widget_class, on_skip_updates_clicked);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
 }
@@ -480,9 +704,10 @@ pt_window_class_init (PtWindowClass *klass)
 static void
 pt_window_init (PtWindow *self)
 {
-  g_autoptr (GtkCssProvider) css_provider = gtk_css_provider_new ();
+  g_autoptr (GtkCssProvider) css_provider = NULL;
   g_autofree char *android_enable_path = NULL;
 
+  css_provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_resource (css_provider, "/io/furios/InitialSetup/style.css");
   gtk_style_context_add_provider_for_display (gdk_display_get_default (),
                                               GTK_STYLE_PROVIDER (css_provider),
@@ -501,6 +726,17 @@ pt_window_init (PtWindow *self)
   android_enable_path = g_build_filename (g_get_home_dir (), ".android_enable", NULL);
   self->android_autostart = g_file_test (android_enable_path, G_FILE_TEST_EXISTS);
 
+  self->update_progress = NULL;
+  self->update_page = NULL;
+  self->password_page = NULL;
+  self->updates_skipped = FALSE;
+
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ANDROID_AUTOSTART]);
   setup_accent_color_toggles (self);
+
+  if (self->main_carousel)
+    g_signal_connect (self->main_carousel,
+                      "notify::position",
+                      G_CALLBACK (on_carousel_position_changed),
+                      self);
 }

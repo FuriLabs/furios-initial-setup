@@ -474,7 +474,7 @@ on_finger_activated (GtkListBox *box, GtkListBoxRow *row, gpointer user_data)
     success = fingerprint_enroll (self, finger_name, &error);
 
     if (error) {
-      g_warning ("Error calling Enroll: %s\n", error->message);
+      g_warning ("Error calling Enroll: %s", error->message);
       g_clear_error (&error);
 
       /* Go back to finger selection if enrollment fails */
@@ -508,7 +508,7 @@ init_dbus_proxies (PtSecuritySettings *self)
   );
 
   if (error) {
-    g_warning ("Error creating fingerprint proxy: %s\n", error->message);
+    g_warning ("Error creating fingerprint proxy: %s", error->message);
     g_clear_error (&error);
     return FALSE;
   }
@@ -525,7 +525,7 @@ init_dbus_proxies (PtSecuritySettings *self)
   );
 
   if (error) {
-    g_warning ("Error creating properties proxy: %s\n", error->message);
+    g_warning ("Error creating properties proxy: %s", error->message);
     g_clear_error (&error);
     g_clear_object (&priv->fingerprint_proxy);
     return FALSE;
@@ -647,7 +647,7 @@ ping_biomd (void)
   );
 
   if (error) {
-    g_warning ("Error creating proxy: %s\n", error->message);
+    g_warning ("Error creating proxy: %s", error->message);
     g_clear_error (&error);
     return FALSE;
   }
@@ -663,7 +663,7 @@ ping_biomd (void)
   );
 
   if (error) {
-    g_warning ("Error calling Ping: %s\n", error->message);
+    g_warning ("Error calling Ping: %s", error->message);
     g_clear_error (&error);
   } else {
     g_variant_get (result, "(b)", &ping_result);

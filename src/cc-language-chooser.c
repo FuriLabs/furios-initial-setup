@@ -701,7 +701,7 @@ localed_proxy_ready (GObject      *source,
 
   if (!proxy) {
     if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-      g_warning ("Failed to contact localed: %s\n", error->message);
+      g_warning ("Failed to contact localed: %s", error->message);
     return;
   }
 
