@@ -395,6 +395,26 @@ on_carousel_position_changed (GObject    *object,
   }
 }
 
+static char *
+pt_read_device_codename (void)
+{
+  const char *path = "/usr/lib/furios/device/codename";
+  g_autofree char *contents = NULL;
+  gsize len = 0;
+
+  if (!g_file_test (path, G_FILE_TEST_EXISTS))
+    return NULL;
+  if (!g_file_get_contents (path, &contents, &len, NULL))
+    return NULL;
+  if (contents == NULL || len == 0)
+    return NULL;
+  g_strstrip (contents);
+  if (contents[0] == '\0')
+    return NULL;
+
+  return g_strdup (contents);
+}
+
 static void
 pt_update_begin (PtUpdateProgress *update_progress)
 {
@@ -726,45 +746,26 @@ pt_window_init (PtWindow *self)
 
   /* HACK: Check for radon based on resolution and adjust scale slider */
   {
-    GdkDisplay *display;
-    GListModel *monitors;
-    GdkMonitor *monitor;
-    GdkRectangle geometry;
+    g_autofree char *codename = NULL;
 
-    display = gdk_display_get_default ();
-    if (display) {
-      monitors = gdk_display_get_monitors (display);
-      if (monitors && g_list_model_get_n_items (monitors) > 0) {
-        monitor = g_list_model_get_item (monitors, 0);
-        if (monitor) {
-          gdk_monitor_get_geometry (monitor, &geometry);
+    codename = pt_read_device_codename ();
 
-          /* radon:   720x1600
-             krypton: 1080x2412 */
+    if (codename != NULL && self->scaling_slider) {
+      GtkAdjustment *adjustment;
 
-           if (geometry.width < 730) {
-            // Must be a radon (or even smaller)
-            GtkAdjustment *adjustment;
+      adjustment = gtk_range_get_adjustment (GTK_RANGE (self->scaling_slider));
 
-            if (self->scaling_slider) {
-              adjustment = gtk_range_get_adjustment (GTK_RANGE (self->scaling_slider));
+      if (g_strcmp0 (codename, "radon") == 0) {
+        gtk_adjustment_set_upper (adjustment, 4);
 
-              gtk_adjustment_set_upper (adjustment, 4);
+        gtk_scale_clear_marks (GTK_SCALE (self->scaling_slider));
+        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 0, GTK_POS_BOTTOM, _("Tiny"));
+        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 1, GTK_POS_BOTTOM, NULL);
+        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 2, GTK_POS_BOTTOM, NULL);
+        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 3, GTK_POS_BOTTOM, NULL);
+        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 4, GTK_POS_BOTTOM, _("Huge"));
 
-              gtk_scale_clear_marks (GTK_SCALE (self->scaling_slider));
-              gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 0, GTK_POS_BOTTOM, _("Tiny"));
-              gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 1, GTK_POS_BOTTOM, NULL);
-              gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 2, GTK_POS_BOTTOM, NULL);
-              gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 3, GTK_POS_BOTTOM, NULL);
-              gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 4, GTK_POS_BOTTOM, _("Huge"));
-
-              // 3 is the closest match to the default scaling, so we use that
-              gtk_adjustment_set_value (adjustment, 3);
-            }
-          }
-
-          g_object_unref (monitor);
-        }
+        gtk_adjustment_set_value (adjustment, 4);
       }
     }
   }
