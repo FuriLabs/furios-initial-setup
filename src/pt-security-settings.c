@@ -628,6 +628,62 @@ pt_security_settings_class_init (PtSecuritySettingsClass *klass)
 }
 
 static gboolean
+fingerprint_hardware_available (void)
+{
+  GDBusProxy *proxy;
+  GError *error = NULL;
+  GVariant *result;
+  GVariant *hardware_variant;
+  gboolean available = FALSE;
+
+  proxy = g_dbus_proxy_new_for_bus_sync (
+    G_BUS_TYPE_SYSTEM,
+    G_DBUS_PROXY_FLAGS_NONE,
+    NULL,
+    BIOMD_DBUS_NAME,
+    BIOMD_DBUS_FINGERPRINT_PATH,
+    "org.freedesktop.DBus.Properties",
+    NULL,
+    &error
+  );
+
+  if (error) {
+    g_warning ("Error creating properties proxy: %s", error->message);
+    g_clear_error (&error);
+    return FALSE;
+  }
+
+  result = g_dbus_proxy_call_sync (
+    proxy,
+    "Get",
+    g_variant_new ("(ss)", BIOMD_DBUS_FINGERPRINT_INTERFACE, "HardwareAvailable"),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    NULL,
+    &error
+  );
+
+  if (error) {
+    g_warning ("Error getting HardwareAvailable: %s", error->message);
+    g_clear_error (&error);
+    g_object_unref (proxy);
+    return FALSE;
+  }
+
+  g_variant_get (result, "(v)", &hardware_variant);
+  available = g_variant_get_boolean (hardware_variant);
+
+  g_debug ("Fingerprint hardware available: %s",
+           available ? "true" : "false");
+
+  g_variant_unref (hardware_variant);
+  g_variant_unref (result);
+  g_object_unref (proxy);
+
+  return available;
+}
+
+static gboolean
 ping_biomd (void)
 {
   GDBusProxy *proxy;
@@ -670,6 +726,9 @@ ping_biomd (void)
     g_variant_unref (result);
   }
 
+  g_debug ("biomd ping result: %s",
+           ping_result ? "true" : "false");
+
   g_object_unref (proxy);
 
   return ping_result;
@@ -679,9 +738,13 @@ static void
 pt_security_settings_init (PtSecuritySettings *self)
 {
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+  gboolean show_fingerprint;
+
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  gtk_widget_set_visible (priv->fingerprint_group, ping_biomd());
+  show_fingerprint = ping_biomd () && fingerprint_hardware_available ();
+
+  gtk_widget_set_visible (priv->fingerprint_group, show_fingerprint);
 }
 
 PtSecuritySettings *
