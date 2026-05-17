@@ -26,6 +26,9 @@
  * being trusted, or anything else that's out of our control. */
 #define PROVISION_KEY "E4jOdnqXFR0mhBf6E+NAOxLvmAgteppg+b7CBJmy3j8="
 
+#define NTP_SYNC_TIMEOUT_SECONDS 300
+#define NTP_SYNC_RETRY_SECONDS 3
+
 enum
 {
   PROP_0,
@@ -57,8 +60,11 @@ typedef struct _PtUpdateProgressPrivate
   gboolean        had_error;
   gboolean        tried_safe_mode;
   gboolean        safe_mode;
+  gboolean        time_sync_done;
   TransactionType current_transaction;
   guint           ntp_sync_attempts;
+  gint64          ntp_sync_started_us;
+  guint           ntp_sync_timeout_id;
   guint           pulse_timeout_id;
 } PtUpdateProgressPrivate;
 
@@ -82,6 +88,12 @@ set_ntp_cb (GObject *source_object,
             gpointer user_data);
 
 static gboolean
+retry_ntp_sync (gpointer user_data);
+
+static void
+request_ntp_enable (PtUpdateProgress *self);
+
+static gboolean
 pt_update_progress_check_valid_date (PtUpdateProgress *self)
 {
   GDateTime *now;
@@ -99,6 +111,26 @@ pt_update_progress_check_valid_date (PtUpdateProgress *self)
   g_date_time_unref (min_date);
 
   return valid;
+}
+
+static gboolean
+pt_update_progress_ntp_timed_out (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  gint64 elapsed_us;
+
+  elapsed_us = g_get_monotonic_time () - priv->ntp_sync_started_us;
+
+  return elapsed_us >= G_TIME_SPAN_SECOND * NTP_SYNC_TIMEOUT_SECONDS;
+}
+
+static void
+schedule_ntp_sync_retry (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  if (priv->ntp_sync_timeout_id == 0)
+    priv->ntp_sync_timeout_id = g_timeout_add_seconds (NTP_SYNC_RETRY_SECONDS, retry_ntp_sync, self);
 }
 
 static void
@@ -156,6 +188,11 @@ pt_update_progress_dispose (GObject *object)
   if (priv->pulse_timeout_id != 0) {
     g_source_remove (priv->pulse_timeout_id);
     priv->pulse_timeout_id = 0;
+  }
+
+  if (priv->ntp_sync_timeout_id != 0) {
+    g_source_remove (priv->ntp_sync_timeout_id);
+    priv->ntp_sync_timeout_id = 0;
   }
 
   g_clear_object (&priv->aptkit_proxy);
@@ -224,7 +261,10 @@ pt_update_progress_init (PtUpdateProgress *self)
   priv->transaction_proxy = NULL;
   priv->timedate_proxy = NULL;
   priv->ntp_sync_attempts = 0;
+  priv->ntp_sync_started_us = 0;
+  priv->ntp_sync_timeout_id = 0;
   priv->pulse_timeout_id = 0;
+  priv->time_sync_done = FALSE;
 
   priv->tried_safe_mode = FALSE;
 
@@ -282,6 +322,11 @@ pt_update_progress_finish (PtUpdateProgress *self)
   if (priv->pulse_timeout_id != 0) {
     g_source_remove (priv->pulse_timeout_id);
     priv->pulse_timeout_id = 0;
+  }
+
+  if (priv->ntp_sync_timeout_id != 0) {
+    g_source_remove (priv->ntp_sync_timeout_id);
+    priv->ntp_sync_timeout_id = 0;
   }
 
   priv->progress_value = 1.0;
@@ -403,6 +448,9 @@ fail:
   if (script_path)
     g_free (script_path);
 
+  g_free (signature);
+  g_free (key);
+
   pt_update_progress_start_update_cache (self);
   return;
 }
@@ -418,6 +466,11 @@ pt_update_progress_start_provision_check (PtUpdateProgress *self)
   GString *post_data;
   gchar *command_output = NULL;
   gint exit_status;
+
+  if (priv->ntp_sync_timeout_id != 0) {
+    g_source_remove (priv->ntp_sync_timeout_id);
+    priv->ntp_sync_timeout_id = 0;
+  }
 
   priv->current_transaction = TRANSACTION_PROVISION_CHECK;
   gtk_label_set_label (priv->label, _("Checking for updates…"));
@@ -475,6 +528,9 @@ pt_update_progress_start_provision_check (PtUpdateProgress *self)
   bytes = g_bytes_new (post_data->str, post_data->len);
   soup_message_set_request_body_from_bytes (msg, "application/x-www-form-urlencoded", bytes);
 
+  g_bytes_unref (bytes);
+  g_string_free (post_data, TRUE);
+
   soup_session_send_and_read_async (session, msg, G_PRIORITY_DEFAULT, NULL,
                                     provision_message_complete_cb, self);
 }
@@ -507,11 +563,15 @@ pt_update_progress_start_update_cache (PtUpdateProgress *self)
   }
 }
 
-static gboolean
-retry_ntp_sync (gpointer user_data)
+static void
+request_ntp_enable (PtUpdateProgress *self)
 {
-  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  if (!priv->timedate_proxy)
+    return;
+
+  g_debug ("NTP is disabled, enabling it again");
 
   g_dbus_proxy_call (priv->timedate_proxy,
                      "SetNTP",
@@ -520,6 +580,119 @@ retry_ntp_sync (gpointer user_data)
                      -1,
                      NULL,
                      set_ntp_cb,
+                     self);
+}
+
+static void
+timedate_properties_cb (GObject *source_object,
+                        GAsyncResult *res,
+                        gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) result = NULL;
+  GVariant *properties = NULL;
+  GVariant *ntp_variant = NULL;
+  GVariant *synced_variant = NULL;
+  gboolean ntp_active = FALSE;
+  gboolean ntp_synchronized = FALSE;
+  gboolean valid_date = FALSE;
+
+  if (priv->time_sync_done)
+    return;
+
+  result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
+  if (result == NULL) {
+    g_warning ("Failed to read timedate1 properties: %s", error->message);
+    goto retry_or_fail;
+  }
+
+  g_variant_get (result, "(@a{sv})", &properties);
+
+  ntp_variant = g_variant_lookup_value (properties, "NTP", G_VARIANT_TYPE_BOOLEAN);
+  synced_variant = g_variant_lookup_value (properties, "NTPSynchronized", G_VARIANT_TYPE_BOOLEAN);
+
+  if (ntp_variant != NULL)
+    ntp_active = g_variant_get_boolean (ntp_variant);
+
+  if (synced_variant != NULL)
+    ntp_synchronized = g_variant_get_boolean (synced_variant);
+
+  valid_date = pt_update_progress_check_valid_date (self);
+
+  g_debug ("timedate1: NTP=%s NTPSynchronized=%s valid-date=%s",
+           ntp_active ? "true" : "false",
+           ntp_synchronized ? "true" : "false",
+           valid_date ? "true" : "false");
+
+  g_clear_pointer (&ntp_variant, g_variant_unref);
+  g_clear_pointer (&synced_variant, g_variant_unref);
+  g_clear_pointer (&properties, g_variant_unref);
+
+  if (!ntp_active) {
+    request_ntp_enable (self);
+    return;
+  }
+
+  if (ntp_active && ntp_synchronized && valid_date) {
+    priv->time_sync_done = TRUE;
+
+    if (priv->ntp_sync_timeout_id != 0) {
+      g_source_remove (priv->ntp_sync_timeout_id);
+      priv->ntp_sync_timeout_id = 0;
+    }
+
+    g_debug ("System clock synchronized, proceeding with updates");
+    pt_update_progress_start_provision_check (self);
+    return;
+  }
+
+retry_or_fail:
+  if (pt_update_progress_ntp_timed_out (self)) {
+    priv->ntp_sync_timeout_id = 0;
+    priv->had_error = TRUE;
+    g_warning ("Giving up after %d seconds waiting for system clock synchronization",
+               NTP_SYNC_TIMEOUT_SECONDS);
+    gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
+    pt_update_progress_finish (self);
+    return;
+  }
+
+  priv->ntp_sync_attempts++;
+  g_debug ("Waiting for system clock synchronization, attempt %u",
+           priv->ntp_sync_attempts);
+
+  gtk_label_set_label (priv->label, _("Synchronizing system clock…"));
+
+  schedule_ntp_sync_retry (self);
+}
+
+static gboolean
+retry_ntp_sync (gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv;
+
+  if (!PT_IS_UPDATE_PROGRESS (self))
+    return G_SOURCE_REMOVE;
+
+  priv = pt_update_progress_get_instance_private (self);
+  priv->ntp_sync_timeout_id = 0;
+
+  if (priv->time_sync_done)
+    return G_SOURCE_REMOVE;
+
+  if (!priv->timedate_proxy)
+    return G_SOURCE_REMOVE;
+
+  g_dbus_proxy_call (priv->timedate_proxy,
+                     "org.freedesktop.DBus.Properties.GetAll",
+                     g_variant_new ("(s)", "org.freedesktop.timedate1"),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     NULL,
+                     timedate_properties_cb,
                      self);
 
   return G_SOURCE_REMOVE;
@@ -532,57 +705,35 @@ set_ntp_cb (GObject *source_object,
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
-  const guint MAX_NTP_ATTEMPTS = 15;
   GError *error = NULL;
   GVariant *result;
-  GVariant *ntp_value;
-  gboolean ntp_active = FALSE;
 
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
     g_warning ("Failed to set NTP: %s", error->message);
     g_error_free (error);
 
-    if (priv->ntp_sync_attempts < MAX_NTP_ATTEMPTS) {
-      priv->ntp_sync_attempts++;
-      g_print ("Retrying NTP sync, attempt %d/%d\n", priv->ntp_sync_attempts, MAX_NTP_ATTEMPTS);
-
-      /* Schedule the next attempt after 3 seconds */
-      g_timeout_add_seconds (3, retry_ntp_sync, self);
-      return;
-    } else {
+    if (pt_update_progress_ntp_timed_out (self)) {
       priv->had_error = TRUE;
-      g_warning ("Giving up after %d failed attempts to synchronize system clock", MAX_NTP_ATTEMPTS);
+      g_warning ("Giving up after %d seconds waiting for system clock synchronization",
+                 NTP_SYNC_TIMEOUT_SECONDS);
       gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
       pt_update_progress_finish (self);
       return;
     }
+
+    schedule_ntp_sync_retry (self);
+    return;
   }
 
   g_variant_unref (result);
 
-  ntp_value = g_dbus_proxy_get_cached_property (priv->timedate_proxy, "NTP");
-  if (ntp_value != NULL) {
-    ntp_active = g_variant_get_boolean (ntp_value);
-    g_variant_unref (ntp_value);
-  }
+  g_debug ("NTP enabled, waiting up to %d seconds for synchronization",
+           NTP_SYNC_TIMEOUT_SECONDS);
 
-  if (ntp_active && pt_update_progress_check_valid_date (self)) {
-    /* NTP is active and date is valid, proceed with updates */
-    pt_update_progress_start_provision_check (self);
-  } else if (priv->ntp_sync_attempts < MAX_NTP_ATTEMPTS) {
-    priv->ntp_sync_attempts++;
-    g_print ("Retrying NTP sync, attempt %d/%d\n", priv->ntp_sync_attempts, MAX_NTP_ATTEMPTS);
+  gtk_label_set_label (priv->label, _("Synchronizing system clock…"));
 
-    /* Schedule the next attempt after 3 seconds */
-    g_timeout_add_seconds (3, retry_ntp_sync, self);
-  } else if (!pt_update_progress_check_valid_date (self)) {
-    /* NTP failed MAX_NTP_ATTEMPTS times in a row AND our date still looks wrong... give up. */
-    priv->had_error = TRUE;
-    g_warning ("Giving up after %d attempts - couldn't synchronize system clock and date is invalid", MAX_NTP_ATTEMPTS);
-    gtk_label_set_label (priv->label, _("Couldn't synchronize system clock"));
-    pt_update_progress_finish (self);
-  }
+  retry_ntp_sync (self);
 }
 
 static void
@@ -972,9 +1123,16 @@ pt_update_progress_begin (PtUpdateProgress *self)
   priv->ready = FALSE;
   priv->did_update_any = FALSE;
   priv->had_error = FALSE;
+  priv->time_sync_done = FALSE;
   priv->ntp_sync_attempts = 0;
+  priv->ntp_sync_started_us = g_get_monotonic_time ();
   priv->current_transaction = TRANSACTION_TIME_SYNC;
   priv->progress_value = 0.0;
+
+  if (priv->ntp_sync_timeout_id != 0) {
+    g_source_remove (priv->ntp_sync_timeout_id);
+    priv->ntp_sync_timeout_id = 0;
+  }
 
   /* start with safe mode enabled, this will be changed if there is no upgrades with safe mode */
   priv->safe_mode = TRUE;
@@ -1009,6 +1167,11 @@ pt_update_progress_skip (PtUpdateProgress *self)
   if (priv->pulse_timeout_id != 0) {
     g_source_remove (priv->pulse_timeout_id);
     priv->pulse_timeout_id = 0;
+  }
+
+  if (priv->ntp_sync_timeout_id != 0) {
+    g_source_remove (priv->ntp_sync_timeout_id);
+    priv->ntp_sync_timeout_id = 0;
   }
 
   /* Don't try to cancel in-flight transactions here; just stop blocking the flow. */
