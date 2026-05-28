@@ -61,6 +61,7 @@
               <object class="AdwActionRow">
                 <property name="activatable">true</property>
                 <property name="title" translatable="yes">Register Fingerprint</property>
+                <property name="subtitle" translatable="yes">Set up fingerprint unlock</property>
                 <signal name="activated" handler="register_fingerprint" swapped="yes"/>
 
                 <child type="suffix">

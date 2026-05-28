@@ -29,6 +29,7 @@ typedef struct _PtSecuritySettingsPrivate
   GtkListBox *finger_list;
   GtkWidget *enroll_step;
   GtkProgressBar *enroll_progress;
+  gulong finger_list_row_activated_id;
 
   GDBusProxy *face_proxy;
   GDBusProxy *face_props_proxy;

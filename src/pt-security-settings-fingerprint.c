@@ -42,6 +42,100 @@ show_toast (AdwToastOverlay *toast_overlay,
   g_free (message);
 }
 
+static GtkWidget *
+find_child_by_name (GtkWidget   *widget,
+                    const gchar *name)
+{
+  GtkWidget *next_child;
+  const gchar *child_name;
+
+  if (!GTK_IS_WIDGET (widget))
+    return NULL;
+
+  next_child = gtk_widget_get_first_child (widget);
+  child_name = gtk_widget_get_name (widget);
+
+  if (g_strcmp0 (name, child_name) == 0)
+    return widget;
+
+  while (next_child) {
+    GtkWidget *found = find_child_by_name (next_child, name);
+
+    if (found)
+      return found;
+
+    next_child = gtk_widget_get_next_sibling (next_child);
+  }
+
+  return NULL;
+}
+
+static GtkWidget *
+find_first_stack (GtkWidget *widget)
+{
+  GtkWidget *child;
+
+  if (!GTK_IS_WIDGET (widget))
+    return NULL;
+
+  if (GTK_IS_STACK (widget))
+    return widget;
+
+  child = gtk_widget_get_first_child (widget);
+
+  while (child) {
+    GtkWidget *found = find_first_stack (child);
+
+    if (found)
+      return found;
+
+    child = gtk_widget_get_next_sibling (child);
+  }
+
+  return NULL;
+}
+
+static PtPage *
+get_parent_page (PtSecuritySettings *self)
+{
+  return PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
+}
+
+static void
+switch_parent_page_to_main (PtSecuritySettings *self)
+{
+  PtPage *parent_page = get_parent_page (self);
+  GtkWidget *stack;
+  GtkWidget *main_child;
+
+  stack = find_first_stack (GTK_WIDGET (parent_page));
+
+  if (!GTK_IS_STACK (stack)) {
+    g_warning ("Failed to find subpage stack");
+    return;
+  }
+
+  main_child = gtk_widget_get_first_child (stack);
+
+  if (main_child)
+    gtk_stack_set_visible_child (GTK_STACK (stack), main_child);
+}
+
+static void
+reset_fingerprint_subpage_ui (PtSecuritySettings *self)
+{
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
+
+  if (priv->finger_list)
+    gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
+
+  if (priv->enroll_step)
+    gtk_widget_set_visible (priv->enroll_step, FALSE);
+
+  if (priv->enroll_progress)
+    gtk_progress_bar_set_fraction (priv->enroll_progress, 0.0);
+}
+
 static gchar **
 get_enrolled_fingers (PtSecuritySettings *self)
 {
@@ -69,6 +163,7 @@ get_enrolled_fingers (PtSecuritySettings *self)
     return NULL;
   } else {
     GVariant *enrolled_variant;
+
     g_variant_get (result, "(v)", &enrolled_variant);
     enrolled_fingers = g_variant_dup_strv (enrolled_variant, NULL);
     g_variant_unref (enrolled_variant);
@@ -105,6 +200,7 @@ get_valid_finger_names (PtSecuritySettings *self)
     return NULL;
   } else {
     GVariant *valid_variant;
+
     g_variant_get (result, "(v)", &valid_variant);
     valid_fingers = g_variant_dup_strv (valid_variant, NULL);
     g_variant_unref (valid_variant);
@@ -179,8 +275,10 @@ refresh_fingerprint_list (PtSecuritySettings *self)
 
   if (!valid_finger_names) {
     g_debug ("Failed to get valid finger names");
+
     if (enrolled_fingers)
       g_strfreev (enrolled_fingers);
+
     return;
   }
 
@@ -221,8 +319,11 @@ handle_signal (GDBusProxy *proxy,
 
     gtk_progress_bar_set_fraction (priv->enroll_progress, progress / 100.0);
 
-    if (progress == 100)
-      gtk_widget_activate_action (GTK_WIDGET (self), "win.flip-page", "i", 1);
+    if (progress == 100) {
+      refresh_fingerprint_list (self);
+      reset_fingerprint_subpage_ui (self);
+      switch_parent_page_to_main (self);
+    }
   } else if (g_strcmp0 (signal_name, "EnrolledFingersChanged") == 0) {
     g_debug ("EnrolledFingersChanged signal received");
     refresh_fingerprint_list (self);
@@ -281,10 +382,8 @@ handle_signal (GDBusProxy *proxy,
       break;
     }
 
-    if (error_code != ERROR_FINGER_NOT_RECOGNIZED && error_code != ERROR_NONE) {
-      gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
-      gtk_widget_set_visible (priv->enroll_step, FALSE);
-    }
+    if (error_code != ERROR_FINGER_NOT_RECOGNIZED && error_code != ERROR_NONE)
+      reset_fingerprint_subpage_ui (self);
   } else if (g_strcmp0 (signal_name, "AcquisitionInfoChanged") == 0) {
     g_variant_get (parameters, "(i)", &acquisition_code);
 
@@ -310,34 +409,6 @@ handle_signal (GDBusProxy *proxy,
       break;
     }
   }
-}
-
-static GtkWidget *
-find_child_by_name (GtkWidget   *widget,
-                    const gchar *name)
-{
-  GtkWidget *next_child;
-  const gchar *child_name;
-
-  if (!GTK_IS_WIDGET (widget))
-    return NULL;
-
-  next_child = gtk_widget_get_first_child (widget);
-  child_name = gtk_widget_get_name (widget);
-
-  if (g_strcmp0 (name, child_name) == 0)
-    return widget;
-
-  while (next_child) {
-    GtkWidget *found = find_child_by_name (next_child, name);
-
-    if (found)
-      return found;
-
-    next_child = gtk_widget_get_next_sibling (next_child);
-  }
-
-  return NULL;
 }
 
 static void
@@ -368,13 +439,11 @@ on_finger_activated (GtkListBox    *box,
       g_warning ("Error calling Enroll: %s", error->message);
       g_clear_error (&error);
 
-      gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
-      gtk_widget_set_visible (priv->enroll_step, FALSE);
+      reset_fingerprint_subpage_ui (self);
     } else if (!success) {
       g_warning ("Failed to start enrollment");
 
-      gtk_widget_set_visible (GTK_WIDGET (priv->finger_list), TRUE);
-      gtk_widget_set_visible (priv->enroll_step, FALSE);
+      reset_fingerprint_subpage_ui (self);
     }
   }
 }
@@ -384,6 +453,9 @@ init_dbus_proxies (PtSecuritySettings *self)
 {
   GError *error = NULL;
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
+
+  if (priv->fingerprint_proxy && priv->props_proxy)
+    return TRUE;
 
   priv->fingerprint_proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
                                                            G_DBUS_PROXY_FLAGS_NONE,
@@ -427,18 +499,22 @@ pt_security_settings_register_fingerprint (PtSecuritySettings *self)
   PtPage *parent_page;
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
 
-  /* Still absolutely GHASTLY, GNARLY, AWFUL */
-  parent_page = PT_PAGE (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (gtk_widget_get_parent (GTK_WIDGET (self)))))));
+  parent_page = get_parent_page (self);
 
   priv->toast_overlay = ADW_TOAST_OVERLAY (find_child_by_name (GTK_WIDGET (parent_page), "toast_overlay"));
   priv->finger_list = GTK_LIST_BOX (find_child_by_name (GTK_WIDGET (parent_page), "finger_list"));
   priv->enroll_step = find_child_by_name (GTK_WIDGET (parent_page), "enroll_step");
   priv->enroll_progress = GTK_PROGRESS_BAR (find_child_by_name (GTK_WIDGET (parent_page), "enroll_progress"));
 
-  g_signal_connect (priv->finger_list, "row-activated", G_CALLBACK (on_finger_activated), self);
+  if (priv->finger_list && priv->finger_list_row_activated_id == 0)
+    priv->finger_list_row_activated_id = g_signal_connect (priv->finger_list,
+                                                           "row-activated",
+                                                           G_CALLBACK (on_finger_activated),
+                                                           self);
 
   if (init_dbus_proxies (self)) {
     refresh_fingerprint_list (self);
+    reset_fingerprint_subpage_ui (self);
     pt_page_switch_to_subpage (parent_page);
   } else {
     g_warning ("Failed to initialize DBus proxies for biomd");
@@ -554,6 +630,12 @@ void
 pt_security_settings_fingerprint_finalize (PtSecuritySettings *self)
 {
   PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
+
+  if (priv->finger_list && priv->finger_list_row_activated_id != 0) {
+    g_signal_handler_disconnect (priv->finger_list,
+                                 priv->finger_list_row_activated_id);
+    priv->finger_list_row_activated_id = 0;
+  }
 
   g_clear_object (&priv->fingerprint_proxy);
   g_clear_object (&priv->props_proxy);
