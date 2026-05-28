@@ -1,12 +1,5 @@
-desktop_conf = configuration_data()
-desktop_conf.set('BRAND', get_option('brand'))
-
 desktop_file = i18n.merge_file(
-  input: configure_file(
-    input: files('io.furios.InitialSetup.desktop.in.in'),
-    output: 'io.furios.InitialSetup.desktop.in',
-    configuration: desktop_conf
-  ),
+  input: 'io.furios.InitialSetup.desktop.in',
   output: 'io.furios.InitialSetup.desktop',
   type: 'desktop',
   po_dir: '../po',
@@ -15,11 +8,7 @@ desktop_file = i18n.merge_file(
 )
 
 appstream_file = i18n.merge_file(
-  input: configure_file(
-    input: files('io.furios.InitialSetup.metainfo.xml.in.in'),
-    output: 'io.furios.InitialSetup.metainfo.xml.in',
-    configuration: desktop_conf
-  ),
+  input: 'io.furios.InitialSetup.metainfo.xml.in',
   output: 'io.furios.InitialSetup.metainfo.xml',
   po_dir: '../po',
   install: true,

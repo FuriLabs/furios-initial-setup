@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop">
   <id>io.furios.InitialSetup</id>
-  <name>@BRAND@ Tour</name>
+  <name>FuriOS Tour</name>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <description>
@@ -9,7 +9,7 @@
       Initial setup program for FuriOS
     </p>
   </description>
-  <summary>@BRAND@ initial setup</summary>
+  <summary>FuriOS initial setup</summary>
 
   <content_rating type="oars-1.1"/>
 

@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+
   <template class="PtSecuritySettings" parent="AdwBin">
     <property name="hexpand">true</property>
     <property name="vexpand">true</property>
+
     <child>
       <object class="GtkBox">
         <property name="orientation">vertical</property>
@@ -12,6 +15,7 @@
         <property name="hexpand">true</property>
         <property name="halign">fill</property>
         <property name="spacing">12</property>
+
         <child>
           <object class="AdwPreferencesGroup" id="password_group">
             <child>
@@ -31,6 +35,7 @@
                 </child>
               </object>
             </child>
+
             <child>
               <object class="AdwPasswordEntryRow" id="verify_entry">
                 <property name="title" translatable="yes">Confirm PIN or password</property>
@@ -44,23 +49,49 @@
             </child>
           </object>
         </child>
+
         <child>
           <object class="AdwPreferencesGroup" id="fingerprint_group">
             <property name="title" translatable="yes">Fingerprint Unlock</property>
             <binding name="sensitive">
-              <lookup name="ready" type="PtSecuritySettings"></lookup>
+              <lookup name="ready" type="PtSecuritySettings"/>
             </binding>
+
             <child>
               <object class="AdwActionRow">
+                <property name="activatable">true</property>
+                <property name="title" translatable="yes">Register Fingerprint</property>
+                <signal name="activated" handler="register_fingerprint" swapped="yes"/>
+
                 <child type="suffix">
                   <object class="GtkImage">
                     <property name="icon-name">go-next-symbolic</property>
                   </object>
                 </child>
+              </object>
+            </child>
+          </object>
+        </child>
 
-                <property name="activatable">True</property>
-                <property name="title" translatable="yes">Register Fingerprint</property>
-                <signal name="activated" handler="register_fingerprint" swapped="yes"/>
+        <child>
+          <object class="AdwPreferencesGroup" id="face_group">
+            <property name="title" translatable="yes">Face Unlock</property>
+            <binding name="sensitive">
+              <lookup name="ready" type="PtSecuritySettings"/>
+            </binding>
+
+            <child>
+              <object class="AdwActionRow" id="face_row">
+                <property name="activatable">true</property>
+                <property name="title" translatable="yes">Register Face</property>
+                <property name="subtitle" translatable="yes">Set up face unlock</property>
+                <signal name="activated" handler="register_face" swapped="yes"/>
+
+                <child type="suffix">
+                  <object class="GtkImage">
+                    <property name="icon-name">go-next-symbolic</property>
+                  </object>
+                </child>
               </object>
             </child>
           </object>

@@ -25,6 +25,7 @@
             </style>
           </object>
         </child>
+
         <child type="overlay">
           <object class="GtkBox">
             <property name="orientation">vertical</property>
@@ -50,6 +51,7 @@
                 </style>
               </object>
             </child>
+
             <child>
               <object class="GtkOverlay" id="carousel_overlay">
                 <child>
@@ -74,7 +76,7 @@
                             <property name="valign">fill</property>
                           </object>
                         </property>
-                        <signal name="apply-changes" handler="pt_commit_language_settings" object="language-page" />
+                        <signal name="apply-changes" handler="pt_commit_language_settings" object="language-page"/>
                       </object>
                     </child>
 
@@ -92,16 +94,18 @@
                                 <property name="vexpand">true</property>
                                 <property name="hexpand">true</property>
                                 <property name="halign">fill</property>
+
                                 <child>
                                   <object class="GtkGrid">
-                                    <property name="column-homogeneous">True</property>
+                                    <property name="column-homogeneous">true</property>
                                     <property name="column-spacing">24</property>
                                     <property name="row-spacing">12</property>
                                     <property name="margin-start">12</property>
                                     <property name="margin-end">12</property>
                                     <property name="margin-top">18</property>
                                     <property name="margin-bottom">12</property>
-                                    <property name="hexpand">True</property>
+                                    <property name="hexpand">true</property>
+
                                     <child>
                                       <object class="GtkToggleButton" id="default_toggle">
                                         <accessibility>
@@ -119,14 +123,15 @@
                                           <property name="column">0</property>
                                           <property name="row">0</property>
                                         </layout>
-                                        <property name="active" bind-source="dark_toggle" bind-property="active" bind-flags="sync-create | invert-boolean | bidirectional"></property>
-                                        <signal name="clicked" handler="pt_set_default_mode" />
+                                        <property name="active" bind-source="dark_toggle" bind-property="active" bind-flags="sync-create | invert-boolean | bidirectional"/>
+                                        <signal name="clicked" handler="pt_set_default_mode"/>
                                       </object>
                                     </child>
+
                                     <child>
                                       <object class="GtkLabel" id="default_label">
                                         <property name="label" translatable="yes">Light</property>
-                                        <property name="use-underline">True</property>
+                                        <property name="use-underline">true</property>
                                         <property name="mnemonic-widget">default_toggle</property>
                                         <layout>
                                           <property name="column">0</property>
@@ -134,6 +139,7 @@
                                         </layout>
                                       </object>
                                     </child>
+
                                     <child>
                                       <object class="GtkToggleButton" id="dark_toggle">
                                         <property name="group">default_toggle</property>
@@ -155,17 +161,18 @@
                                         <binding name="active">
                                           <lookup name="dark" type="AdwStyleManager">
                                             <lookup name="style-manager" type="AdwApplication">
-                                              <lookup name="application" type="GtkWindow"></lookup>
+                                              <lookup name="application" type="GtkWindow"/>
                                             </lookup>
                                           </lookup>
                                         </binding>
-                                        <signal name="clicked" handler="pt_set_dark_mode" />
+                                        <signal name="clicked" handler="pt_set_dark_mode"/>
                                       </object>
                                     </child>
+
                                     <child>
                                       <object class="GtkLabel" id="dark_label">
                                         <property name="label" translatable="yes">Dark</property>
-                                        <property name="use-underline">True</property>
+                                        <property name="use-underline">true</property>
                                         <property name="mnemonic-widget">dark_toggle</property>
                                         <layout>
                                           <property name="column">1</property>
@@ -175,6 +182,7 @@
                                     </child>
                                   </object>
                                 </child>
+
                                 <child>
                                   <object class="GtkScrolledWindow">
                                     <child>
@@ -187,6 +195,7 @@
                                     </child>
                                   </object>
                                 </child>
+
                                 <child>
                                   <object class="GtkScale" id="scaling_slider">
                                     <property name="margin-start">12</property>
@@ -194,7 +203,7 @@
                                     <property name="margin-top">18</property>
                                     <property name="margin-bottom">12</property>
                                     <property name="round-digits">0</property>
-                                    <property name="hexpand">True</property>
+                                    <property name="hexpand">true</property>
                                     <property name="halign">fill</property>
                                     <property name="valign">fill</property>
                                     <property name="adjustment">
@@ -368,7 +377,7 @@
                             <child>
                               <object class="GtkLabel">
                                 <property name="label" translatable="yes">Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</property>
-                                <property name="wrap">True</property>
+                                <property name="wrap">true</property>
                                 <property name="justify">center</property>
                                 <style>
                                   <class name="legalese"/>
@@ -410,75 +419,145 @@
                         </style>
                       </object>
                     </child>
+                  </object>
+                </child>
 
+                <child type="overlay">
+                  <object class="GtkButton">
+                    <property name="valign">end</property>
+                    <property name="halign">end</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-bottom">12</property>
+                    <property name="action-name">win.flip-page</property>
+                    <property name="action-target">1</property>
+                    <property name="child">
+                      <object class="GtkImage">
+                        <property name="pixel-size">16</property>
+                        <property name="icon-name">go-next-symbolic</property>
+                      </object>
+                    </property>
+                    <binding name="visible">
+                      <closure type="gboolean" function="get_btn_next_visible">
+                        <lookup name="position">main_carousel</lookup>
+                        <lookup name="n-pages">main_carousel</lookup>
+                      </closure>
+                    </binding>
+                    <binding name="sensitive">
+                      <closure type="gboolean" function="get_btn_next_sensitive">
+                        <lookup name="position">main_carousel</lookup>
+                        <lookup name="child">carousel_overlay</lookup>
+                      </closure>
+                    </binding>
+                    <style>
+                      <class name="circular"/>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+
+                <child type="overlay">
+                  <object class="GtkButton">
+                    <property name="valign">end</property>
+                    <property name="halign">start</property>
+                    <property name="margin-bottom">12</property>
+                    <property name="margin-start">12</property>
+                    <property name="action-name">win.flip-page</property>
+                    <property name="action-target">-1</property>
+                    <property name="child">
+                      <object class="GtkImage">
+                        <property name="pixel-size">16</property>
+                        <property name="icon-name">go-previous-symbolic</property>
+                      </object>
+                    </property>
+                    <binding name="visible">
+                      <closure type="gboolean" function="get_btn_previous_visible">
+                        <lookup name="position">main_carousel</lookup>
+                      </closure>
+                    </binding>
+                    <binding name="sensitive">
+                      <closure type="gboolean" function="get_btn_previous_sensitive">
+                        <lookup name="position">main_carousel</lookup>
+                        <lookup name="child">carousel_overlay</lookup>
+                      </closure>
+                    </binding>
+                    <style>
+                      <class name="circular"/>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+
+                <child type="overlay">
+                  <object class="AdwBottomSheet">
+                    <property name="name">face_bottom_sheet</property>
+                    <property name="visible">false</property>
+                    <property name="open">false</property>
+                    <property name="modal">true</property>
+                    <property name="can-close">false</property>
+                    <property name="show-drag-handle">false</property>
+                    <property name="hexpand">true</property>
+                    <property name="vexpand">true</property>
+                    <property name="halign">fill</property>
+                    <property name="valign">fill</property>
+
+                    <property name="content">
+                      <object class="GtkBox">
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
+                      </object>
+                    </property>
+
+                    <property name="sheet">
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="spacing">12</property>
+                        <property name="margin-top">18</property>
+                        <property name="margin-bottom">18</property>
+                        <property name="margin-start">18</property>
+                        <property name="margin-end">18</property>
+                        <property name="hexpand">true</property>
+
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">Look at the camera and keep your face centered.</property>
+                            <property name="halign">center</property>
+                            <property name="wrap">true</property>
+                            <property name="justify">center</property>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="GtkPicture">
+                            <property name="name">face_viewfinder_picture</property>
+                            <property name="hexpand">true</property>
+                            <property name="height-request">360</property>
+                            <property name="content-fit">cover</property>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="GtkProgressBar">
+                            <property name="name">face_enroll_progress</property>
+                            <property name="show-text">false</property>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="GtkButton">
+                            <property name="name">face_cancel_button</property>
+                            <property name="label" translatable="yes">Cancel</property>
+                            <property name="halign">center</property>
+                            <style>
+                              <class name="pill"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
                   </object>
                 </child>
               </object>
             </child>
-          </object>
-        </child>
-        <child type="overlay">
-          <object class="GtkButton">
-            <property name="valign">end</property>
-            <property name="halign">end</property>
-            <property name="margin-end">12</property>
-            <property name="margin-bottom">12</property>
-            <property name="action-name">win.flip-page</property>
-            <property name="action-target">1</property>
-            <property name="child">
-              <object class="GtkImage">
-                <property name="pixel-size">16</property>
-                <property name="icon-name">go-next-symbolic</property>
-              </object>
-            </property>
-            <binding name="visible">
-              <closure type="gboolean" function="get_btn_next_visible">
-                <lookup name="position">main_carousel</lookup>
-                <lookup name="n-pages">main_carousel</lookup>
-              </closure>
-            </binding>
-            <binding name="sensitive">
-              <closure type="gboolean" function="get_btn_next_sensitive">
-                <lookup name="position">main_carousel</lookup>
-                <lookup name="child">carousel_overlay</lookup>
-              </closure>
-            </binding>
-            <style>
-              <class name="circular"/>
-              <class name="flat"/>
-            </style>
-          </object>
-        </child>
-
-        <child type="overlay">
-          <object class="GtkButton">
-            <property name="valign">end</property>
-            <property name="halign">start</property>
-            <property name="margin-bottom">12</property>
-            <property name="margin-start">12</property>
-            <property name="action-name">win.flip-page</property>
-            <property name="action-target">-1</property>
-            <property name="child">
-              <object class="GtkImage">
-                <property name="pixel-size">16</property>
-                <property name="icon-name">go-previous-symbolic</property>
-              </object>
-            </property>
-            <binding name="visible">
-              <closure type="gboolean" function="get_btn_previous_visible">
-                <lookup name="position">main_carousel</lookup>
-              </closure>
-            </binding>
-            <binding name="sensitive">
-              <closure type="gboolean" function="get_btn_previous_sensitive">
-                <lookup name="position">main_carousel</lookup>
-                <lookup name="child">carousel_overlay</lookup>
-              </closure>
-            </binding>
-            <style>
-              <class name="circular"/>
-              <class name="flat"/>
-            </style>
           </object>
         </child>
       </object>

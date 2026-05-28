@@ -22,6 +22,7 @@ enum
   PROP_READY,
   PROP_LAST_PROP
 };
+
 static GParamSpec *props[PROP_LAST_PROP];
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtSecuritySettings, pt_security_settings, ADW_TYPE_BIN)
@@ -35,11 +36,11 @@ pt_security_settings_get_priv (PtSecuritySettings *self)
 }
 
 static void
-password_changed_cb (PasswdHandler      *handler,
-                     GError             *error,
-                     void               *self)
+password_changed_cb (PasswdHandler *handler,
+                     GError        *error,
+                     void          *self)
 {
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (PT_SECURITY_SETTINGS (self));
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (PT_SECURITY_SETTINGS (self));
 
   if (error) {
     priv->apply_cb (self, FALSE, priv->apply_user_data);
@@ -52,11 +53,11 @@ password_changed_cb (PasswdHandler      *handler,
 }
 
 static void
-auth_cb (PasswdHandler      *handler,
-         GError             *error,
-         void               *self)
+auth_cb (PasswdHandler *handler,
+         GError        *error,
+         void          *self)
 {
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (PT_SECURITY_SETTINGS (self));
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (PT_SECURITY_SETTINGS (self));
 
   if (error) {
     priv->apply_cb (self, FALSE, priv->apply_user_data);
@@ -77,19 +78,23 @@ pt_security_settings_finalize (GObject *object)
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
 
   pt_security_settings_fingerprint_finalize (self);
+  pt_security_settings_face_finalize (self);
 
   G_OBJECT_CLASS (pt_security_settings_parent_class)->finalize (object);
 }
 
 void
-pt_security_settings_apply (GObject *self, ApplyCallback cb, gpointer user_data)
+pt_security_settings_apply (GObject       *self,
+                            ApplyCallback cb,
+                            gpointer      user_data)
 {
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (PT_SECURITY_SETTINGS (self));
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (PT_SECURITY_SETTINGS (self));
   PasswdHandler *passwd_handler;
 
   if (priv->ready) {
     priv->apply_cb = cb;
     priv->apply_user_data = user_data;
+
     passwd_handler = passwd_init ();
     passwd_authenticate (passwd_handler, DEFAULT_PASSWORD, auth_cb, self);
   } else {
@@ -101,7 +106,7 @@ pt_security_settings_apply (GObject *self, ApplyCallback cb, gpointer user_data)
 static void
 update_password_match (PtSecuritySettings *self)
 {
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
   const gchar *password;
   const gchar *verify;
   bool can_proceed = FALSE;
@@ -138,18 +143,25 @@ register_fingerprint (PtSecuritySettings *self)
 }
 
 static void
+register_face (PtSecuritySettings *self)
+{
+  pt_security_settings_register_face (self);
+}
+
+static void
 pt_security_settings_set_property (GObject      *object,
                                    guint         property_id,
                                    const GValue *value,
                                    GParamSpec   *pspec)
 {
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
 
   switch (property_id) {
   case PROP_READY:
     priv->ready = g_value_get_boolean (value);
     break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -163,12 +175,13 @@ pt_security_settings_get_property (GObject    *object,
                                    GParamSpec *pspec)
 {
   PtSecuritySettings *self = PT_SECURITY_SETTINGS (object);
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
 
   switch (property_id) {
   case PROP_READY:
     g_value_set_boolean (value, priv->ready);
     break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -183,6 +196,7 @@ pt_security_settings_class_init (PtSecuritySettingsClass *klass)
 
   object_class->set_property = pt_security_settings_set_property;
   object_class->get_property = pt_security_settings_get_property;
+  object_class->finalize = pt_security_settings_finalize;
 
   props[PROP_READY] =
     g_param_spec_boolean ("ready",
@@ -193,30 +207,36 @@ pt_security_settings_class_init (PtSecuritySettingsClass *klass)
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
-  object_class->finalize = pt_security_settings_finalize;
-
   gtk_widget_class_set_template_from_resource (widget_class,
                                                "/io/furios/InitialSetup/ui/pt-security-settings.ui");
 
   gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, password_entry);
   gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, verify_entry);
   gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, fingerprint_group);
+  gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, face_group);
+  gtk_widget_class_bind_template_child_private (widget_class, PtSecuritySettings, face_row);
 
   gtk_widget_class_bind_template_callback (widget_class, update_password_match);
   gtk_widget_class_bind_template_callback (widget_class, register_fingerprint);
+  gtk_widget_class_bind_template_callback (widget_class, register_face);
 }
 
 static void
 pt_security_settings_init (PtSecuritySettings *self)
 {
-  PtSecuritySettingsPrivate *priv = pt_security_settings_get_instance_private (self);
+  PtSecuritySettingsPrivate *priv = pt_security_settings_get_priv (self);
   gboolean show_fingerprint;
+  gboolean show_face;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
+  gst_init (NULL, NULL);
+
   show_fingerprint = pt_security_settings_fingerprint_available ();
+  show_face = pt_security_settings_face_available (self);
 
   gtk_widget_set_visible (priv->fingerprint_group, show_fingerprint);
+  gtk_widget_set_visible (priv->face_group, show_face);
 }
 
 PtSecuritySettings *

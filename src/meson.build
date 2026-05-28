@@ -11,6 +11,7 @@ furios_initial_setup_sources = [
   'pt-security-settings.c',
   'pt-security-settings.h',
   'pt-security-settings-fingerprint.c',
+  'pt-security-settings-face.c',
   'pt-security-settings-private.h',
   'pt-application.h',
   'pt-application.c',
@@ -40,12 +41,13 @@ furios_initial_setup_deps = [
   gmobile_dep,
   gtk_dep,
   adwaita_dep,
-  dependency ('gnome-desktop-4'),
-  dependency ('fontconfig'),
-  dependency ('accountsservice'),
-  dependency ('libnm', version: '>= 1.2'),
-  dependency ('libnma-gtk4', version: '>= 1.0'),
-  dependency ('libsoup-3.0', version: '>= 3.0'),
+  gst_dep,
+  gnome_desktop_dep,
+  fontconfig_dep,
+  accountsservice_dep,
+  libnm_dep,
+  libnma_dep,
+  libsoup_dep,
 ]
 
 gnome = import('gnome')

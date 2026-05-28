@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=@BRAND@ initial setup
+Name=FuriOS initial setup
 Exec=furios-initial-setup
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)
 Icon=io.furios.InitialSetup
@@ -8,7 +8,7 @@ Type=Application
 Categories=GNOME;GTK;Utility;
 StartupNotify=true
 # Translators: Search terms to find this application. Do NOT translate or localize the semicolons. The list MUST also end with a semicolon.
-Keywords=Mobile;Tour;@BRAND@;
+Keywords=Mobile;Tour;FuriOS;
 OnlyShowIn=Phosh;
 X-Purism-FormFactor=Workstation;Mobile;
 NoDisplay=true

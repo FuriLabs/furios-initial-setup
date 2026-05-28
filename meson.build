@@ -1,32 +1,25 @@
-project('furios-initial-setup', 'c',
-          version: '1.0.0',
-    meson_version: '>= 0.58.0',
-  default_options: [ 'warning_level=2',
-                     'werror=false',
-                     'c_std=gnu11',
-                   ],
+project(
+    'furios-initial-setup',
+    ['c'],
+    version: '1.0.0',
+    meson_version: '>=0.58'
 )
 
-application_id = 'io.furios.InitialSetup'
 prefix = get_option('prefix')
 libdir = join_paths(prefix, get_option('libdir'))
 
-glib_ver = '2.74'
-glib_ver_str = 'GLIB_VERSION_@0@'.format(glib_ver.replace('.','_'))
-glib_ver_cmp = '>=@0@'.format(glib_ver)
+glib_dep = dependency('glib-2.0', version: '>=2.74')
+gio_dep = dependency('gio-2.0', version: '>=2.74')
+gtk_dep = dependency('gtk4', version: '>=4.12')
+adwaita_dep = dependency('libadwaita-1', version: '>=1.4')
+gst_dep = dependency('gstreamer-1.0')
+gnome_desktop_dep = dependency('gnome-desktop-4')
+fontconfig_dep = dependency('fontconfig')
+accountsservice_dep = dependency('accountsservice')
+libnm_dep = dependency('libnm', version: '>= 1.2')
+libnma_dep = dependency('libnma-gtk4', version: '>= 1.0')
+libsoup_dep = dependency('libsoup-3.0', version: '>= 3.0')
 
-gtk_ver = '4.12'
-gtk_ver_str = 'GDK_VERSION_@0@'.format(gtk_ver.replace('.','_'))
-gtk_ver_cmp = '>=@0@'.format(gtk_ver)
-
-adw_ver = '1.4'
-adw_ver_str = 'ADW_VERSION_@0@'.format(adw_ver.replace('.','_'))
-adw_ver_cmp = '>=@0@'.format(adw_ver)
-
-glib_dep = dependency('glib-2.0', version: glib_ver_cmp)
-gio_dep = dependency('gio-2.0', version: glib_ver_cmp)
-gtk_dep = dependency('gtk4', version: gtk_ver_cmp)
-adwaita_dep = dependency('libadwaita-1', version: adw_ver_cmp)
 gmobile_dep = dependency('gmobile',
   version: '>= 0.1.0',
   fallback: ['gmobile', 'gmobile_dep'],
@@ -41,75 +34,13 @@ i18n = import('i18n')
 gnome = import('gnome')
 
 cc = meson.get_compiler('c')
-global_c_args = []
-test_c_args = [
-  '-Wcast-align',
-  '-Wdate-time',
-  '-Wdeclaration-after-statement',
-  ['-Werror=format-security', '-Werror=format=2'],
-  '-Wendif-labels',
-  '-Werror=incompatible-pointer-types',
-  '-Werror=missing-declarations',
-  '-Werror=overflow',
-  '-Werror=return-type',
-  '-Werror=shift-count-overflow',
-  '-Werror=shift-overflow=2',
-  '-Werror=implicit-fallthrough=3',
-  '-Wfloat-equal',
-  '-Wformat-nonliteral',
-  '-Wformat-security',
-  '-Winit-self',
-  '-Wmaybe-uninitialized',
-  '-Wmissing-field-initializers',
-  '-Wmissing-include-dirs',
-  '-Wmissing-noreturn',
-  '-Wnested-externs',
-  '-Wno-missing-field-initializers',
-  '-Wno-sign-compare',
-  '-Wno-strict-aliasing',
-  '-Wno-unused-parameter',
-  '-Wold-style-definition',
-  '-Wpointer-arith',
-  '-Wredundant-decls',
-  '-Wshadow',
-  '-Wstrict-prototypes',
-  '-Wswitch-default',
-  '-Wswitch-enum',
-  '-Wtype-limits',
-  '-Wundef',
-  '-Wunused-function',
-]
-if get_option('buildtype') != 'plain'
-  test_c_args += '-fstack-protector-strong'
-endif
-
-foreach arg: test_c_args
-  if cc.has_multi_arguments(arg)
-    global_c_args += arg
-  endif
-endforeach
-add_project_arguments(
-  [global_c_args,
-   '-DGLIB_VERSION_MIN_REQUIRED=@0@'.format(glib_ver_str),
-   '-DGLIB_VERSION_MAX_ALLOWED=@0@'.format(glib_ver_str),
-   '-DGDK_VERSION_MIN_REQUIRED=@0@'.format(gtk_ver_str),
-   '-DGDK_VERSION_MAX_ALLOWED=@0@'.format(gtk_ver_str),
-   '-DADW_VERSION_MIN_REQUIRED=@0@'.format(adw_ver_str),
-   '-DADW_VERSION_MAX_ALLOWED=@0@'.format(adw_ver_str),
-  ],
-  language: 'c'
-)
-
 
 config_h = configuration_data()
 config_h.set_quoted('GETTEXT_PACKAGE', 'furios-initial-setup')
 config_h.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 config_h.set_quoted('INITIAL_SETUP_APP', meson.project_name())
-config_h.set_quoted('INITIAL_SETUP_BRAND', get_option('brand'))
-config_h.set_quoted('INITIAL_SETUP_URL', get_option('url'))
-config_h.set_quoted('INITIAL_SETUP_VENDOR', get_option('vendor'))
 config_h.set_quoted('INITIAL_SETUP_VERSION', meson.project_version())
-config_h.set_quoted('INITIAL_SETUP_APP_ID', application_id)
+config_h.set_quoted('INITIAL_SETUP_APP_ID', 'io.furios.InitialSetup')
 
 configure_file(
   output: 'furios-initial-setup-config.h',
@@ -128,17 +59,6 @@ install_data('systemd/furios-initial-setup-inner', install_dir: '/usr/libexec/')
 install_data('systemd/furios-initial-setup.desktop', install_dir: '/etc/xdg/autostart/')
 install_data('systemd/60-initial-setup.conf', install_dir: '/usr/lib/systemd/system/phosh.service.d/')
 
-summary({
-     'Brand': get_option('brand'),
-     'Vendor': get_option('vendor'),
-  },
-  bool_yn: true,
-  section: 'Config',
-)
-
-# gnome.post_install() is available since meson 0.59.0
-# Distributions use their own tooling (e.g. postinst, triggers, etc)
-# so it is okay if the post_install() is not run on distro builds
 if meson.version().version_compare('>=0.59.0')
   gnome.post_install(
     glib_compile_schemas: true,
