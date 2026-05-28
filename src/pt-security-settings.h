@@ -1,7 +1,9 @@
 /*
- * Copyright (C) 2025 Furi Labs
+ * Copyright (C) 2026 Furi Labs
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Author: Bardia Moshiri <bardia@furilabs.com>
  */
 
 #pragma once

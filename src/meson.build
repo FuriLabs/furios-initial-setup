@@ -10,6 +10,8 @@ furios_initial_setup_sources = [
   'cc-network-list.h',
   'pt-security-settings.c',
   'pt-security-settings.h',
+  'pt-security-settings-fingerprint.c',
+  'pt-security-settings-private.h',
   'pt-application.h',
   'pt-application.c',
   'pt-window.h',
