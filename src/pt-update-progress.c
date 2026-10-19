@@ -28,6 +28,7 @@
 
 #define NTP_SYNC_TIMEOUT_SECONDS 300
 #define NTP_SYNC_RETRY_SECONDS 3
+#define ERROR_CACHE_BROKEN "error-cache-broken"
 
 enum
 {
@@ -43,7 +44,8 @@ typedef enum
   TRANSACTION_PROVISION_CHECK,
   TRANSACTION_UPDATE_CACHE,
   TRANSACTION_CHECK_UPDATES,
-  TRANSACTION_INSTALL_UPDATES
+  TRANSACTION_INSTALL_UPDATES,
+  TRANSACTION_REPAIR_DEPENDENCIES
 } TransactionType;
 
 typedef struct _PtUpdateProgressPrivate
@@ -61,6 +63,9 @@ typedef struct _PtUpdateProgressPrivate
   gboolean        tried_safe_mode;
   gboolean        safe_mode;
   gboolean        time_sync_done;
+  gboolean        transaction_handled;
+  guint           broken_dependency_repairs;
+  GHashTable     *resolved_config_conflicts;
   TransactionType current_transaction;
   guint           ntp_sync_attempts;
   gint64          ntp_sync_started_us;
@@ -69,6 +74,16 @@ typedef struct _PtUpdateProgressPrivate
 } PtUpdateProgressPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (PtUpdateProgress, pt_update_progress, ADW_TYPE_BIN)
+
+static void
+aptkit_transaction_failed (PtUpdateProgress *self,
+                           GDBusProxy *proxy,
+                           const gchar *message);
+
+static void
+aptkit_upgrade_system_cb (GObject *source_object,
+                          GAsyncResult *res,
+                          gpointer user_data);
 
 static void
 aptkit_transaction_signal_cb (GDBusProxy *proxy,
@@ -198,6 +213,7 @@ pt_update_progress_dispose (GObject *object)
   g_clear_object (&priv->aptkit_proxy);
   g_clear_object (&priv->transaction_proxy);
   g_clear_object (&priv->timedate_proxy);
+  g_clear_pointer (&priv->resolved_config_conflicts, g_hash_table_unref);
 
   G_OBJECT_CLASS (pt_update_progress_parent_class)->dispose (object);
 }
@@ -265,6 +281,7 @@ pt_update_progress_init (PtUpdateProgress *self)
   priv->ntp_sync_timeout_id = 0;
   priv->pulse_timeout_id = 0;
   priv->time_sync_done = FALSE;
+  priv->resolved_config_conflicts = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   priv->tried_safe_mode = FALSE;
 
@@ -772,21 +789,156 @@ timedate_proxy_setup_cb (GObject *source_object,
 }
 
 static void
+aptkit_fail_update (PtUpdateProgress *self,
+                   const gchar *message)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  g_warning ("Update failed: %s", message);
+  priv->had_error = TRUE;
+  gtk_label_set_label (priv->label, _("Update failed"));
+  pt_update_progress_finish (self);
+}
+
+static void
+aptkit_repair_dependencies (PtUpdateProgress *self)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  g_warning ("Broken package dependencies detected, attempting automatic repair");
+  priv->broken_dependency_repairs++;
+  priv->current_transaction = TRANSACTION_REPAIR_DEPENDENCIES;
+  gtk_label_set_label (priv->label, _("Repairing package dependencies…"));
+
+  g_dbus_proxy_call (priv->aptkit_proxy,
+                     "FixBrokenDepends",
+                     g_variant_new ("()"),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     NULL,
+                     aptkit_upgrade_system_cb,
+                     self);
+}
+
+static void
+aptkit_error_property_cb (GObject *source_object,
+                          GAsyncResult *res,
+                          gpointer user_data)
+{
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) result = NULL;
+  g_autoptr(GVariant) details = NULL;
+  const gchar *code = NULL;
+  const gchar *message = NULL;
+
+  result = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source_object), res, &error);
+  if (result != NULL) {
+    g_variant_get (result, "(@v)", &details);
+    if (g_variant_is_of_type (details, G_VARIANT_TYPE_VARIANT)) {
+      GVariant *unwrapped = g_variant_get_variant (details);
+      g_variant_unref (details);
+      details = unwrapped;
+    }
+    if (g_variant_is_of_type (details, G_VARIANT_TYPE ("(ss)")))
+      g_variant_get (details, "(&s&s)", &code, &message);
+  }
+
+  if (g_strcmp0 (code, ERROR_CACHE_BROKEN) == 0 &&
+      priv->broken_dependency_repairs == 0 &&
+      priv->current_transaction != TRANSACTION_REPAIR_DEPENDENCIES) {
+    aptkit_repair_dependencies (self);
+  } else {
+    if (code != NULL)
+      g_warning ("Aptkit error %s: %s", code, message ? message : "");
+    else if (error != NULL)
+      g_warning ("Failed to read Aptkit error: %s", error->message);
+    aptkit_fail_update (self, message ? message : "Transaction failed");
+  }
+
+  g_object_unref (self);
+}
+
+static void
+aptkit_transaction_failed (PtUpdateProgress *self,
+                           GDBusProxy *proxy,
+                           const gchar *message)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  if (proxy != priv->transaction_proxy || priv->transaction_handled)
+    return;
+
+  priv->transaction_handled = TRUE;
+  g_debug ("Transaction failure: %s", message);
+
+  g_dbus_connection_call (g_dbus_proxy_get_connection (proxy),
+                          "org.aptkit",
+                          g_dbus_proxy_get_object_path (proxy),
+                          "org.freedesktop.DBus.Properties",
+                          "Get",
+                          g_variant_new ("(ss)", "org.aptkit.transaction", "Error"),
+                          G_VARIANT_TYPE ("(v)"),
+                          G_DBUS_CALL_FLAGS_NONE,
+                          -1,
+                          NULL,
+                          aptkit_error_property_cb,
+                          g_object_ref (self));
+}
+
+static void
+aptkit_config_conflict_resolved_cb (GObject *source_object,
+                                    GAsyncResult *res,
+                                    gpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) result = NULL;
+
+  result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
+  if (result == NULL)
+    g_warning ("Failed to resolve configuration file conflict: %s", error->message);
+}
+
+static void
+aptkit_resolve_config_conflict (PtUpdateProgress *self,
+                                GDBusProxy *proxy,
+                                const gchar *path)
+{
+  PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
+
+  if (path[0] == '\0' || g_hash_table_contains (priv->resolved_config_conflicts, path))
+    return;
+
+  g_hash_table_add (priv->resolved_config_conflicts, g_strdup (path));
+  g_debug ("Replacing configuration file %s (old version saved as .dpkg-old)", path);
+
+  g_dbus_proxy_call (proxy,
+                     "ResolveConfigFileConflict",
+                     g_variant_new ("(ss)", path, "replace"),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     NULL,
+                     aptkit_config_conflict_resolved_cb,
+                     NULL);
+}
+
+static void
 aptkit_transaction_run_cb (GObject *source_object,
                            GAsyncResult *res,
                            gpointer user_data)
 {
-  GError *error = NULL;
-  GVariant *result;
+  PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) result = NULL;
 
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
     g_warning ("Failed to run transaction: %s", error->message);
-    g_error_free (error);
-    return;
+    aptkit_transaction_failed (self, G_DBUS_PROXY (source_object), error->message);
   }
 
-  g_variant_unref (result);
+  g_object_unref (self);
 }
 
 static void
@@ -810,6 +962,8 @@ aptkit_transaction_proxy_cb (GObject *source_object,
 
   g_clear_object (&priv->transaction_proxy);
   priv->transaction_proxy = transaction_proxy;
+  priv->transaction_handled = FALSE;
+  g_hash_table_remove_all (priv->resolved_config_conflicts);
 
   g_signal_connect (transaction_proxy, "g-signal",
                     G_CALLBACK (aptkit_transaction_signal_cb),
@@ -830,7 +984,7 @@ aptkit_transaction_proxy_cb (GObject *source_object,
                      -1,
                      NULL,
                      aptkit_transaction_run_cb,
-                     NULL);
+                     g_object_ref (self));
 }
 
 static void
@@ -843,7 +997,7 @@ aptkit_upgrade_system_cb (GObject *source_object,
   GError *error = NULL;
   gchar *error_message = NULL;
   GVariant *result;
-  const gchar *transaction_path;
+  g_autofree gchar *transaction_path = NULL;
 
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
@@ -857,7 +1011,7 @@ aptkit_upgrade_system_cb (GObject *source_object,
     return;
   }
 
-  g_variant_get (result, "(&s)", &transaction_path);
+  g_variant_get (result, "(s)", &transaction_path);
   g_variant_unref (result);
 
   g_dbus_proxy_new (g_dbus_proxy_get_connection (priv->aptkit_proxy),
@@ -881,7 +1035,7 @@ aptkit_update_cache_cb (GObject *source_object,
   GError *error = NULL;
   gchar *error_message = NULL;
   GVariant *result;
-  const gchar *transaction_path;
+  g_autofree gchar *transaction_path = NULL;
 
   result = g_dbus_proxy_call_finish (G_DBUS_PROXY (source_object), res, &error);
   if (result == NULL) {
@@ -895,7 +1049,7 @@ aptkit_update_cache_cb (GObject *source_object,
     return;
   }
 
-  g_variant_get (result, "(&s)", &transaction_path);
+  g_variant_get (result, "(s)", &transaction_path);
   g_debug ("Got transaction path: %s", transaction_path);
   g_variant_unref (result);
 
@@ -988,6 +1142,9 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
 
+  if (proxy != priv->transaction_proxy)
+    return;
+
   if (g_strcmp0 (signal_name, "PropertyChanged") == 0) {
     const gchar *property_name;
     GVariant *value;
@@ -998,8 +1155,17 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
       g_variant_get (value, "&s", &exit_state);
       g_debug ("Exit state changed to: %s", exit_state);
 
+      if (proxy != priv->transaction_proxy || priv->transaction_handled) {
+        g_variant_unref (value);
+        return;
+      }
+
       if (g_strcmp0 (exit_state, "exit-success") == 0) {
-        if (priv->current_transaction == TRANSACTION_UPDATE_CACHE) {
+        priv->transaction_handled = TRUE;
+        if (priv->current_transaction == TRANSACTION_REPAIR_DEPENDENCIES) {
+          g_debug ("Broken dependency repair completed, refreshing the cache");
+          pt_update_progress_start_update_cache (self);
+        } else if (priv->current_transaction == TRANSACTION_UPDATE_CACHE) {
           /* after cache update, check for updates starting with safe mode (call Simulate, safe mode TRUE) */
           g_debug ("Cache update successful, checking for updates in safe mode");
           priv->safe_mode = TRUE;
@@ -1035,10 +1201,15 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
       } else if (g_strcmp0 (exit_state, "exit-failed") == 0 ||
                  g_strcmp0 (exit_state, "exit-cancelled") == 0 ||
                  g_strcmp0 (exit_state, "exit-previous-failed") == 0) {
-        g_warning ("Transaction failed with state: %s", exit_state);
-        priv->had_error = TRUE;
-        gtk_label_set_label (priv->label, _("Update failed"));
-        pt_update_progress_finish (self);
+        aptkit_transaction_failed (self, proxy, exit_state);
+      }
+    } else if (g_strcmp0 (property_name, "ConfigFileConflict") == 0) {
+      const gchar *old_path;
+      const gchar *new_path;
+
+      if (g_variant_is_of_type (value, G_VARIANT_TYPE ("(ss)"))) {
+        g_variant_get (value, "(&s&s)", &old_path, &new_path);
+        aptkit_resolve_config_conflict (self, proxy, old_path);
       }
     } else if (g_strcmp0 (property_name, "Progress") == 0 &&
                priv->current_transaction == TRANSACTION_INSTALL_UPDATES) {
@@ -1073,10 +1244,12 @@ aptkit_transaction_signal_cb (GDBusProxy *proxy,
       }
 
       if (packages != NULL && dependencies != NULL &&
-          priv->current_transaction == TRANSACTION_CHECK_UPDATES) {
+          priv->current_transaction == TRANSACTION_CHECK_UPDATES &&
+          !priv->transaction_handled) {
         gboolean have_updates = aptkit_check_for_updates (self, packages, dependencies);
 
         g_debug ("Updates check completed. Updates available: %s", have_updates ? "yes" : "no");
+        priv->transaction_handled = TRUE;
 
         if (have_updates) {
           /* found updates, install them */
@@ -1125,6 +1298,9 @@ pt_update_progress_begin (PtUpdateProgress *self)
   priv->had_error = FALSE;
   priv->time_sync_done = FALSE;
   priv->ntp_sync_attempts = 0;
+  priv->broken_dependency_repairs = 0;
+  priv->transaction_handled = FALSE;
+  priv->tried_safe_mode = FALSE;
   priv->ntp_sync_started_us = g_get_monotonic_time ();
   priv->current_transaction = TRANSACTION_TIME_SYNC;
   priv->progress_value = 0.0;
