@@ -28,6 +28,7 @@
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <NetworkManager.h>
+#include <string.h>
 
 enum
 {
@@ -56,6 +57,7 @@ struct _CcNetworkListPrivate
   GtkSizeGroup *icons;
 
   guint refresh_timeout_id;
+  char *last_network_signature;
 
   const char *signal_indicator_picture;
 };
@@ -116,6 +118,65 @@ get_strongest_unique_aps (const GPtrArray *aps)
 
 out:
   return unique;
+}
+
+static guint
+signal_strength_level (guint strength)
+{
+  if (strength < 20)
+    return 0;
+  if (strength < 40)
+    return 1;
+  if (strength < 50)
+    return 2;
+  if (strength < 80)
+    return 3;
+  return 4;
+}
+
+static gint
+signature_entry_sort (gconstpointer a, gconstpointer b)
+{
+  return g_strcmp0 (*(const char * const *) a, *(const char * const *) b);
+}
+
+static char *
+build_network_signature (GPtrArray *aps, NMAccessPoint *active, NMDeviceState state)
+{
+  g_autoptr (GPtrArray) entries = g_ptr_array_new_with_free_func (g_free);
+  GString *signature = g_string_new (NULL);
+  guint i;
+
+  g_string_append_printf (signature, "%u:%s;", (guint) state,
+                          active ? nm_object_get_path (NM_OBJECT (active)) : "");
+
+  for (i = 0; i < aps->len; i++) {
+    NMAccessPoint *ap = g_ptr_array_index (aps, i);
+    GBytes *ssid = nm_access_point_get_ssid (ap);
+    const char *path = nm_object_get_path (NM_OBJECT (ap));
+    g_autofree char *ssid_text = NULL;
+
+    if (ssid == NULL)
+      continue;
+
+    ssid_text = nm_utils_ssid_to_utf8 (g_bytes_get_data (ssid, NULL),
+                                      g_bytes_get_size (ssid));
+    g_ptr_array_add (entries,
+                     g_strdup_printf ("%s:%u:%s", path ? path : "",
+                                      signal_strength_level (nm_access_point_get_strength (ap)),
+                                      ssid_text ? ssid_text : ""));
+  }
+
+  g_ptr_array_sort (entries, signature_entry_sort);
+
+  for (i = 0; i < entries->len; i++) {
+    const char *entry = g_ptr_array_index (entries, i);
+
+    g_string_append_printf (signature, "%zu:", strlen (entry));
+    g_string_append (signature, entry);
+  }
+
+  return g_string_free (signature, FALSE);
 }
 
 static gint
@@ -288,6 +349,9 @@ static gboolean
 refresh_again (gpointer user_data)
 {
   CcNetworkList *self = CC_NETWORK_LIST (user_data);
+  CcNetworkListPrivate *priv = cc_network_list_get_instance_private (self);
+
+  priv->refresh_timeout_id = 0;
   refresh_wireless_list (self);
   return G_SOURCE_REMOVE;
 }
@@ -313,15 +377,19 @@ refresh_wireless_list (CcNetworkList *self)
   NMAccessPoint *active_ap = NULL;
   NMAccessPoint *ap;
   const GPtrArray *aps;
-  GPtrArray *unique_aps;
+  g_autoptr (GPtrArray) unique_aps = NULL;
+  g_autofree char *signature = NULL;
   GtkWidget *child;
-  guint i;
-  graphene_point_t out;
   GtkWidget *window = GTK_WIDGET (gtk_widget_get_root (GTK_WIDGET (self)));
-  gboolean ok = gtk_widget_compute_point (GTK_WIDGET (self), window, &GRAPHENE_POINT_INIT (0, 0), &out);
+  graphene_rect_t bounds;
+  guint i;
+  gboolean ok;
 
-  if (ok && (out.x < 0 || out.x > gtk_widget_get_width (window) ||
-      out.y < 0 || out.y > gtk_widget_get_height (window)) &&
+  ok = GTK_IS_WINDOW (window) && gtk_widget_compute_bounds (GTK_WIDGET (self), window, &bounds);
+  if (ok && (bounds.origin.x + bounds.size.width <= 0 ||
+             bounds.origin.x >= gtk_widget_get_width (window) ||
+             bounds.origin.y + bounds.size.height <= 0 ||
+             bounds.origin.y >= gtk_widget_get_height (window)) &&
       gtk_widget_get_first_child (priv->network_list) != NULL) {
     /* Looks like we're out of bounds and we already have something in the list. Don't waste cycles. */
     g_debug ("Skipping Wi-Fi networks list refresh, widget is out of bounds");
@@ -331,36 +399,37 @@ refresh_wireless_list (CcNetworkList *self)
   g_debug ("Refreshing Wi-Fi networks list");
 
   priv->refreshing = TRUE;
-  g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/not-connected.svg", NULL);
-
   g_assert (NM_IS_DEVICE_WIFI (priv->nm_device));
-
-  cancel_periodic_refresh (self);
 
   nm_device_wifi_request_scan_async (NM_DEVICE_WIFI (priv->nm_device), NULL, NULL, NULL);
   active_ap = nm_device_wifi_get_active_access_point (NM_DEVICE_WIFI (priv->nm_device));
+  aps = nm_device_wifi_get_access_points (NM_DEVICE_WIFI (priv->nm_device));
+  unique_aps = get_strongest_unique_aps (aps);
+
+  signature = build_network_signature (unique_aps, active_ap,
+                                       nm_device_get_state (priv->nm_device));
+  if (g_strcmp0 (signature, priv->last_network_signature) == 0) {
+    g_debug ("Wi-Fi network list unchanged, keeping existing rows");
+    goto out;
+  }
+
+  g_free (priv->last_network_signature);
+  priv->last_network_signature = g_steal_pointer (&signature);
+
+  g_object_set (self, "signal-indicator", "resource:///io/furios/InitialSetup/pages/not-connected.svg", NULL);
 
   while ((child = gtk_widget_get_first_child (priv->network_list)) != NULL)
     gtk_list_box_remove (GTK_LIST_BOX (priv->network_list), child);
 
-  aps = nm_device_wifi_get_access_points (NM_DEVICE_WIFI (priv->nm_device));
-
-  if (aps == NULL || aps->len == 0)
-    goto out;
-
-  unique_aps = get_strongest_unique_aps (aps);
   for (i = 0; i < unique_aps->len; i++) {
     ap = NM_ACCESS_POINT (g_ptr_array_index (unique_aps, i));
     add_access_point (self, ap, active_ap);
   }
 
   g_object_notify (G_OBJECT (self), "signal-indicator");
-  g_ptr_array_unref (unique_aps);
 
 out:
-
   start_periodic_refresh (self);
-
   priv->refreshing = FALSE;
 
   return G_SOURCE_REMOVE;
@@ -595,6 +664,12 @@ cc_network_list_constructed (GObject *object)
 static void
 cc_network_list_finalize (GObject *object)
 {
+  CcNetworkList *self = CC_NETWORK_LIST (object);
+  CcNetworkListPrivate *priv = cc_network_list_get_instance_private (self);
+
+  cancel_periodic_refresh (self);
+  g_clear_pointer (&priv->last_network_signature, g_free);
+
   G_OBJECT_CLASS (cc_network_list_parent_class)->finalize (object);
 }
 
