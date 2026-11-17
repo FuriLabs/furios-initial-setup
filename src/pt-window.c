@@ -731,30 +731,26 @@ pt_window_init (PtWindow *self)
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  /* HACK: Check for radon based on resolution and adjust scale slider */
-  {
-    g_autofree char *codename = NULL;
+  /* HACK: Check for radon and radonx and adjust scale slider */
+  g_autofree char *codename = pt_read_device_codename ();
 
-    codename = pt_read_device_codename ();
+  if (codename != NULL && self->scaling_slider &&
+      (g_strcmp0 (codename, "radon") == 0 ||
+       g_strcmp0 (codename, "radonx") == 0)) {
+    GtkAdjustment *adjustment;
 
-    if (codename != NULL && self->scaling_slider) {
-      GtkAdjustment *adjustment;
+    adjustment = gtk_range_get_adjustment (GTK_RANGE (self->scaling_slider));
 
-      adjustment = gtk_range_get_adjustment (GTK_RANGE (self->scaling_slider));
+    gtk_adjustment_set_upper (adjustment, 4);
 
-      if (g_strcmp0 (codename, "radon") == 0) {
-        gtk_adjustment_set_upper (adjustment, 4);
+    gtk_scale_clear_marks (GTK_SCALE (self->scaling_slider));
+    gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 0, GTK_POS_BOTTOM, _("Tiny"));
+    gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 1, GTK_POS_BOTTOM, NULL);
+    gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 2, GTK_POS_BOTTOM, NULL);
+    gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 3, GTK_POS_BOTTOM, NULL);
+    gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 4, GTK_POS_BOTTOM, _("Huge"));
 
-        gtk_scale_clear_marks (GTK_SCALE (self->scaling_slider));
-        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 0, GTK_POS_BOTTOM, _("Tiny"));
-        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 1, GTK_POS_BOTTOM, NULL);
-        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 2, GTK_POS_BOTTOM, NULL);
-        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 3, GTK_POS_BOTTOM, NULL);
-        gtk_scale_add_mark (GTK_SCALE (self->scaling_slider), 4, GTK_POS_BOTTOM, _("Huge"));
-
-        gtk_adjustment_set_value (adjustment, 4);
-      }
-    }
+    gtk_adjustment_set_value (adjustment, 4);
   }
 
   self->interface_settings = g_settings_new (INTERFACE_PATH_ID);
