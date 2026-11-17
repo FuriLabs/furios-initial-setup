@@ -33,6 +33,8 @@ elif [ "--systemd" = "--builtin" ]; then
   exit 1
 fi
 
+dbus-send --system --print-reply --dest=org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles.EnableOverdrive boolean:true || true
+
 # Run gnome-session through a login shell so it picks
 # variables from /etc/profile.d (XDG_*)
 [ -n "$WLR_BACKENDS" ] || WLR_BACKENDS=drm,libinput
