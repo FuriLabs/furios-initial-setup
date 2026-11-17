@@ -58,6 +58,7 @@ struct _PtWindow {
 
   GtkWidget           *password_page;
   gboolean             updates_skipped;
+  gboolean             update_started;
 
   GtkWidget           *scaling_slider;
 };
@@ -357,6 +358,27 @@ on_update_progress_ready (GObject    *object,
 }
 
 static void
+pt_update_begin (PtUpdateProgress *update_progress)
+{
+  PtWindow *self;
+
+  self = PT_WINDOW (gtk_widget_get_root (GTK_WIDGET (update_progress)));
+
+  if (self->update_started)
+    return;
+
+  self->update_started = TRUE;
+
+  /* Hide the skip banner when updates finish (ready == TRUE). */
+  g_signal_connect (update_progress,
+                    "notify::ready",
+                    G_CALLBACK (on_update_progress_ready),
+                    self);
+
+  pt_update_progress_begin (update_progress);
+}
+
+static void
 on_carousel_page_changed (AdwCarousel *carousel,
                           guint        index,
                           gpointer     user_data)
@@ -374,6 +396,9 @@ on_carousel_page_changed (AdwCarousel *carousel,
       return;
     }
   }
+
+  if (!self->update_started && adw_carousel_get_nth_page (carousel, index) == self->update_page)
+    pt_update_begin (self->update_progress);
 
   pt_window_update_skip_banner (self, index);
 }
@@ -396,53 +421,6 @@ pt_read_device_codename (void)
     return NULL;
 
   return g_strdup (contents);
-}
-
-static void
-pt_update_begin (PtUpdateProgress *update_progress)
-{
-  GtkRoot *root;
-  PtWindow *self;
-  GtkWidget *w;
-  GtkWidget *page = NULL;
-
-  root = gtk_widget_get_root (GTK_WIDGET (update_progress));
-  self = PT_WINDOW (root);
-
-  /* Remember which PtUpdateProgress is active */
-  self->update_progress = update_progress;
-
-  w = GTK_WIDGET (update_progress);
-  while (w) {
-    GtkWidget *parent = gtk_widget_get_parent (w);
-
-    if (!parent)
-      break;
-
-    if (ADW_IS_CAROUSEL (parent)) {
-      page = w;
-      break;
-    }
-
-    w = parent;
-  }
-
-  self->update_page = page;
-
-  if (self->main_carousel) {
-    guint page_index;
-
-    page_index = (guint) (adw_carousel_get_position (self->main_carousel) + 0.5);
-    pt_window_update_skip_banner (self, page_index);
-  }
-
-  /* Hide banner again once updates are done (ready == TRUE) */
-  g_signal_connect (update_progress,
-                    "notify::ready",
-                    G_CALLBACK (on_update_progress_ready),
-                    self);
-
-  pt_update_progress_begin (update_progress);
 }
 
 static gboolean
@@ -690,6 +668,8 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_set_template_from_resource (widget_class,
                                                "/io/furios/InitialSetup/ui/pt-window.ui");
   gtk_widget_class_bind_template_child (widget_class, PtWindow, main_carousel);
+  gtk_widget_class_bind_template_child (widget_class, PtWindow, update_page);
+  gtk_widget_class_bind_template_child (widget_class, PtWindow, update_progress);
   gtk_widget_class_bind_template_child (widget_class, PtWindow, accent_box);
   gtk_widget_class_bind_template_child (widget_class, PtWindow, skip_updates_banner);
   gtk_widget_class_bind_template_child (widget_class, PtWindow, scaling_slider);
@@ -705,7 +685,6 @@ pt_window_class_init (PtWindowClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_language_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_security_settings);
   gtk_widget_class_bind_template_callback (widget_class, pt_commit_all);
-  gtk_widget_class_bind_template_callback (widget_class, pt_update_begin);
   gtk_widget_class_bind_template_callback (widget_class, on_skip_updates_clicked);
 
   gtk_widget_class_install_action (widget_class, "win.flip-page", "i", on_flip_page_activated);
@@ -758,8 +737,6 @@ pt_window_init (PtWindow *self)
   android_enable_path = g_build_filename (g_get_home_dir (), ".android_enable", NULL);
   self->android_autostart = g_file_test (android_enable_path, G_FILE_TEST_EXISTS);
 
-  self->update_progress = NULL;
-  self->update_page = NULL;
   self->password_page = NULL;
   self->updates_skipped = FALSE;
 
