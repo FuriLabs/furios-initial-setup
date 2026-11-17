@@ -321,19 +321,39 @@ pt_commit_all (PtPage *final_page)
 }
 
 static void
+pt_window_update_skip_banner (PtWindow *self,
+                              guint     page_index)
+{
+  gboolean ready = FALSE;
+  gboolean show = FALSE;
+  GtkWidget *page;
+
+  if (!self->skip_updates_banner || !self->main_carousel)
+    return;
+
+  if (self->update_progress && self->update_page && !self->updates_skipped) {
+    g_object_get (self->update_progress, "ready", &ready, NULL);
+    page = adw_carousel_get_nth_page (self->main_carousel, page_index);
+    show = !ready && page == self->update_page;
+  }
+
+  if (adw_banner_get_revealed (self->skip_updates_banner) != show)
+    adw_banner_set_revealed (self->skip_updates_banner, show);
+}
+
+static void
 on_update_progress_ready (GObject    *object,
                           GParamSpec *pspec,
                           gpointer    user_data)
 {
-  PtWindow *self;
-  gboolean ready = FALSE;
+  PtWindow *self = PT_WINDOW (user_data);
+  guint page_index;
 
-  self = PT_WINDOW (user_data);
+  if (!self->main_carousel)
+    return;
 
-  g_object_get (object, "ready", &ready, NULL);
-
-  if (ready && self->skip_updates_banner)
-    adw_banner_set_revealed (self->skip_updates_banner, FALSE);
+  page_index = (guint) (adw_carousel_get_position (self->main_carousel) + 0.5);
+  pt_window_update_skip_banner (self, page_index);
 }
 
 static void
@@ -345,53 +365,17 @@ on_carousel_page_changed (AdwCarousel *carousel,
 
   g_debug ("Dropping focus");
   gtk_window_set_focus (GTK_WINDOW (self), NULL);
-}
 
-static void
-on_carousel_position_changed (GObject    *object,
-                              GParamSpec *pspec,
-                              gpointer    user_data)
-{
-  PtWindow *self;
-  AdwCarousel *carousel;
-  int pos;
-  GtkWidget *page;
-  gboolean show = FALSE;
-  gboolean ready = FALSE;
-
-  self = PT_WINDOW (user_data);
-  carousel = ADW_CAROUSEL (object);
-
-  if (!self->skip_updates_banner)
-    return;
-
-  if (!self->update_progress || !self->update_page) {
-    adw_banner_set_revealed (self->skip_updates_banner, FALSE);
-  } else {
-    g_object_get (self->update_progress, "ready", &ready, NULL);
-
-    if (ready || self->updates_skipped) {
-      adw_banner_set_revealed (self->skip_updates_banner, FALSE);
-    } else {
-      pos = adw_carousel_get_position (carousel);
-      page = adw_carousel_get_nth_page (carousel, pos);
-
-      if (page == self->update_page)
-        show = TRUE;
-
-      adw_banner_set_revealed (self->skip_updates_banner, show);
-    }
-  }
-
-  if (self->updates_skipped && self->password_page && self->main_carousel) {
-    int current_index = adw_carousel_get_position (self->main_carousel);
+  if (self->updates_skipped && self->password_page) {
     int password_index = pt_window_get_page_index (self, self->password_page);
 
-    if (password_index >= 0 && current_index < password_index) {
-      GtkWidget *pwd_page = self->password_page;
-      adw_carousel_scroll_to (self->main_carousel, pwd_page, FALSE);
+    if (password_index >= 0 && index < (guint) password_index) {
+      adw_carousel_scroll_to (carousel, self->password_page, FALSE);
+      return;
     }
   }
+
+  pt_window_update_skip_banner (self, index);
 }
 
 static char *
@@ -445,8 +429,12 @@ pt_update_begin (PtUpdateProgress *update_progress)
 
   self->update_page = page;
 
-  if (self->skip_updates_banner)
-    adw_banner_set_revealed (self->skip_updates_banner, TRUE);
+  if (self->main_carousel) {
+    guint page_index;
+
+    page_index = (guint) (adw_carousel_get_position (self->main_carousel) + 0.5);
+    pt_window_update_skip_banner (self, page_index);
+  }
 
   /* Hide banner again once updates are done (ready == TRUE) */
   g_signal_connect (update_progress,
@@ -782,14 +770,9 @@ pt_window_init (PtWindow *self)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ANDROID_AUTOSTART]);
   setup_accent_color_toggles (self);
 
-  if (self->main_carousel) {
-    g_signal_connect (self->main_carousel,
-                      "notify::position",
-                      G_CALLBACK (on_carousel_position_changed),
-                      self);
+  if (self->main_carousel)
     g_signal_connect (self->main_carousel,
                       "page-changed",
                       G_CALLBACK (on_carousel_page_changed),
                       self);
-  }
 }
