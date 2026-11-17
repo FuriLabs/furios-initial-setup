@@ -49,7 +49,6 @@ struct _PtWindow {
   int                  pending_commits;
 
   GSettings           *interface_settings;
-  gdouble              last_position;
 
   GtkWidget           *accent_box;
 
@@ -128,22 +127,11 @@ get_btn_next_sensitive (GObject *object, AdwCarousel *carousel, double position)
 static gboolean
 get_btn_previous_sensitive (GObject *object, AdwCarousel *carousel, double position)
 {
-  /* HACK: this method gets called whenever the user starts swiping anywhere
-   * This is DEFINITELY NOT THE RIGHT PLACE TO DO THIS, but we want to ensure
-   * that we unfocus any text entry or any other crap like that. So I'm just gonna
-   * do it here */
-  GtkRoot *root;
-  GtkWidget *prev_page;
   PtWindow *self;
+  GtkWidget *prev_page;
   int cur_index;
 
-  root = gtk_widget_get_root (GTK_WIDGET (carousel));
-  self = PT_WINDOW (root);
-
-  if (!G_APPROX_VALUE (self->last_position, position, 0.0001)) {
-    gtk_window_set_focus (GTK_WINDOW (self), NULL);
-    self->last_position = position;
-  }
+  self = PT_WINDOW (gtk_widget_get_root (GTK_WIDGET (carousel)));
 
   if (!self->updates_skipped || !self->update_page || !self->main_carousel)
     return TRUE;
@@ -346,6 +334,17 @@ on_update_progress_ready (GObject    *object,
 
   if (ready && self->skip_updates_banner)
     adw_banner_set_revealed (self->skip_updates_banner, FALSE);
+}
+
+static void
+on_carousel_page_changed (AdwCarousel *carousel,
+                          guint        index,
+                          gpointer     user_data)
+{
+  PtWindow *self = PT_WINDOW (user_data);
+
+  g_debug ("Dropping focus");
+  gtk_window_set_focus (GTK_WINDOW (self), NULL);
 }
 
 static void
@@ -783,9 +782,14 @@ pt_window_init (PtWindow *self)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ANDROID_AUTOSTART]);
   setup_accent_color_toggles (self);
 
-  if (self->main_carousel)
+  if (self->main_carousel) {
     g_signal_connect (self->main_carousel,
                       "notify::position",
                       G_CALLBACK (on_carousel_position_changed),
                       self);
+    g_signal_connect (self->main_carousel,
+                      "page-changed",
+                      G_CALLBACK (on_carousel_page_changed),
+                      self);
+  }
 }
