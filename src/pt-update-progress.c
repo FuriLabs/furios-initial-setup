@@ -28,6 +28,7 @@
 
 #define NTP_SYNC_TIMEOUT_SECONDS 300
 #define NTP_SYNC_RETRY_SECONDS 3
+#define PROGRESS_PULSE_INTERVAL_MS 50
 #define ERROR_CACHE_BROKEN "error-cache-broken"
 
 enum
@@ -304,7 +305,6 @@ pt_update_progress_pulse_progress_cb (gpointer user_data)
 {
   PtUpdateProgress *self = PT_UPDATE_PROGRESS (user_data);
   PtUpdateProgressPrivate *priv;
-  GtkRoot *root;
 
   if (!PT_IS_UPDATE_PROGRESS (self))
     return G_SOURCE_REMOVE;
@@ -320,11 +320,6 @@ pt_update_progress_pulse_progress_cb (gpointer user_data)
     priv->pulse_timeout_id = 0;
     return G_SOURCE_REMOVE;
   }
-
-  /* Unfocus whatever is focused so the keyboard doesn't get stuck up */
-  root = gtk_widget_get_root (GTK_WIDGET (self));
-  if (GTK_IS_WINDOW (root))
-    gtk_window_set_focus (GTK_WINDOW (root), GTK_WIDGET (priv->progress));
 
   gtk_progress_bar_pulse (priv->progress);
 
@@ -1289,9 +1284,15 @@ pt_update_progress_begin (PtUpdateProgress *self)
 {
   PtUpdateProgressPrivate *priv = pt_update_progress_get_instance_private (self);
 
-  /* WTF: GTK progress bars need to be manually pumped for the pulse to move
-   * ????????????????? what */
-  priv->pulse_timeout_id = g_timeout_add (8, pt_update_progress_pulse_progress_cb, self);
+  /* Restart the pulse source if setup is started more than once. */
+  if (priv->pulse_timeout_id != 0) {
+    g_source_remove (priv->pulse_timeout_id);
+    priv->pulse_timeout_id = 0;
+  }
+
+  priv->pulse_timeout_id = g_timeout_add (PROGRESS_PULSE_INTERVAL_MS,
+                                          pt_update_progress_pulse_progress_cb,
+                                          self);
 
   priv->ready = FALSE;
   priv->did_update_any = FALSE;
